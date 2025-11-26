@@ -1,6 +1,7 @@
 // GPTBots API Client for Private Deployment (Server-side)
 // Uses custom fetch with SSL certificate bypass for Vercel deployment
 
+import http from "http"
 import https from "https"
 import { Readable } from "stream"
 
@@ -19,16 +20,19 @@ async function fetchWithSSLBypass(
 ): Promise<Response> {
   return new Promise((resolve, reject) => {
     const urlObj = new URL(url)
-    const requestOptions: https.RequestOptions = {
+    const isHttps = urlObj.protocol === "https:"
+    const httpModule = isHttps ? https : http
+    
+    const requestOptions: http.RequestOptions | https.RequestOptions = {
       hostname: urlObj.hostname,
-      port: urlObj.port || 443,
+      port: urlObj.port || (isHttps ? 443 : 80),
       path: urlObj.pathname + urlObj.search,
       method: options.method || "GET",
       headers: options.headers as Record<string, string>,
-      agent: httpsAgent,
+      ...(isHttps ? { agent: httpsAgent } : {}),
     }
 
-    const req = https.request(requestOptions, (res) => {
+    const req = httpModule.request(requestOptions, (res) => {
       const chunks: Buffer[] = []
       
       res.on("data", (chunk) => {
@@ -88,16 +92,19 @@ function fetchStreamWithSSLBypass(
 ): Promise<ReadableStream<Uint8Array>> {
   return new Promise((resolve, reject) => {
     const urlObj = new URL(url)
-    const requestOptions: https.RequestOptions = {
+    const isHttps = urlObj.protocol === "https:"
+    const httpModule = isHttps ? https : http
+    
+    const requestOptions: http.RequestOptions | https.RequestOptions = {
       hostname: urlObj.hostname,
-      port: urlObj.port || 443,
+      port: urlObj.port || (isHttps ? 443 : 80),
       path: urlObj.pathname + urlObj.search,
       method: options.method || "GET",
       headers: options.headers as Record<string, string>,
-      agent: httpsAgent,
+      ...(isHttps ? { agent: httpsAgent } : {}),
     }
 
-    const req = https.request(requestOptions, (res) => {
+    const req = httpModule.request(requestOptions, (res) => {
       if (res.statusCode && res.statusCode >= 400) {
         let errorBody = ""
         res.on("data", (chunk) => {
