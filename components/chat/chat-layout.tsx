@@ -244,6 +244,7 @@ export default function ChatLayout({ user }: ChatLayoutProps) {
         // 1. <think>...</think>
         // 2. <think>...</think>
         // 3. <think>...</think>
+        // Try multiple patterns to handle different tag combinations
         let thinkingMatch = text.match(/<think>(.*?)<\/redacted_reasoning>/s)
         if (!thinkingMatch) {
           thinkingMatch = text.match(/<think>(.*?)<\/think>/s)
