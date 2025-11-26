@@ -269,8 +269,8 @@ export default function ChatLayout({ user }: ChatLayoutProps) {
           // Found </think> tag, switch back to content mode
           const thinkingPart = buffer.substring(0, thinkEndIndex)
           thinkingContent += thinkingPart
-          // Remove everything up to and including </think>
-          buffer = buffer.substring(thinkEndIndex + 8) // 8 is length of "</think>"
+          // Remove everything up to and including </think> (8 chars)
+          buffer = buffer.substring(thinkEndIndex + 8)
           isInThinkingMode = false
           thinkingComplete = true
         }

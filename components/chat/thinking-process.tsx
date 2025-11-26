@@ -28,32 +28,16 @@ export default function ThinkingProcess({ thinking, isComplete = false, classNam
     }
   }, [isComplete, thinking])
 
-  // Typewriter effect for thinking content
+  // Display thinking content - show immediately without typewriter to avoid flickering
   useEffect(() => {
     if (!isExpanded || !thinking) {
       setDisplayedText("")
       return
     }
 
-    // If complete, show all text immediately
-    if (isComplete) {
-      setDisplayedText(thinking)
-      return
-    }
-
-    // Typewriter effect while streaming
-    let currentIndex = 0
-    const interval = setInterval(() => {
-      if (currentIndex < thinking.length) {
-        setDisplayedText(thinking.substring(0, currentIndex + 1))
-        currentIndex++
-      } else {
-        clearInterval(interval)
-      }
-    }, 10) // Adjust speed as needed
-
-    return () => clearInterval(interval)
-  }, [thinking, isExpanded, isComplete])
+    // Show content immediately - no typewriter effect to avoid flickering on updates
+    setDisplayedText(thinking)
+  }, [thinking, isExpanded])
 
   if (!thinking) return null
 
