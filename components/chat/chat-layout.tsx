@@ -240,26 +240,26 @@ export default function ChatLayout({ user }: ChatLayoutProps) {
 
       // Helper function to parse content and extract thinking
       const parseContent = (text: string) => {
-        // Match various thinking tag formats:
-        // 1. <think>...</think>
-        // 2. <think>...</think>
-        // 3. <think>...</think>
-        // Try multiple patterns to handle different tag combinations
-        let thinkingMatch = text.match(/<think>(.*?)<\/redacted_reasoning>/s)
+        // Match <think>...</think> tags (primary format from GPTBots)
+        let thinkingMatch = text.match(/<think>([\s\S]*?)<\/redacted_reasoning>/s)
+        
+        // Also try <think>...</think> format as fallback
         if (!thinkingMatch) {
-          thinkingMatch = text.match(/<think>(.*?)<\/think>/s)
-        }
-        if (!thinkingMatch) {
-          thinkingMatch = text.match(/<think>(.*?)<\/redacted_reasoning>/s)
+          thinkingMatch = text.match(/<think>([\s\S]*?)<\/think>/s)
         }
         
-        if (thinkingMatch) {
+        // Also handle mixed formats
+        if (!thinkingMatch) {
+          thinkingMatch = text.match(/<think>([\s\S]*?)<\/redacted_reasoning>/s)
+        }
+        
+        if (thinkingMatch && thinkingMatch[1]) {
           const thinking = thinkingMatch[1].trim()
-          // Remove all variations of thinking tags
+          // Remove all variations of thinking tags from content
           const content = text
-            .replace(/<think>.*?<\/redacted_reasoning>/s, "")
-            .replace(/<think>.*?<\/think>/s, "")
-            .replace(/<think>.*?<\/redacted_reasoning>/s, "")
+            .replace(/<think>[\s\S]*?<\/redacted_reasoning>/s, "")
+            .replace(/<think>[\s\S]*?<\/think>/s, "")
+            .replace(/<think>[\s\S]*?<\/redacted_reasoning>/s, "")
             .trim()
           return { thinking, content }
         }
