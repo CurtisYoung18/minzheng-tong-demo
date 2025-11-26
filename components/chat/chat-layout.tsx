@@ -251,25 +251,47 @@ export default function ChatLayout({ user }: ChatLayoutProps) {
                 const event = JSON.parse(line.slice(6))
                 console.log("[v0] Stream event:", event.code, event.message)
 
+                // Handle different event types per API docs
                 if (event.code === 3 && event.message === "Text") {
-                  fullContent += event.data
-                  setMessages((prev) => prev.map((m) => (m.id === aiMessageId ? { ...m, content: fullContent } : m)))
+                  // Text content - append to fullContent
+                  if (typeof event.data === "string") {
+                    fullContent += event.data
+                    setMessages((prev) => prev.map((m) => (m.id === aiMessageId ? { ...m, content: fullContent } : m)))
+                  }
                 } else if (event.code === 10 && event.message === "FlowOutput") {
+                  // FlowOutput - extract content from output array
                   if (event.data && Array.isArray(event.data)) {
                     for (const output of event.data) {
-                      if (output.content && typeof output.content === "string" && !fullContent) {
-                        fullContent = output.content
-                        setMessages((prev) =>
-                          prev.map((m) => (m.id === aiMessageId ? { ...m, content: fullContent } : m)),
-                        )
+                      if (output.content) {
+                        if (typeof output.content === "string") {
+                          if (!fullContent) {
+                            fullContent = output.content
+                            setMessages((prev) =>
+                              prev.map((m) => (m.id === aiMessageId ? { ...m, content: fullContent } : m)),
+                            )
+                          }
+                        } else if (output.content.text) {
+                          fullContent += output.content.text
+                          setMessages((prev) => prev.map((m) => (m.id === aiMessageId ? { ...m, content: fullContent } : m)))
+                        }
                       }
                     }
                   }
                 } else if (event.code === 39 && event.message === "Audio") {
+                  // Audio transcript
                   if (event.data?.transcript) {
                     fullContent += event.data.transcript
                     setMessages((prev) => prev.map((m) => (m.id === aiMessageId ? { ...m, content: fullContent } : m)))
                   }
+                } else if (event.code === 0 && event.message === "End") {
+                  // Stream ended - no action needed, just log
+                  console.log("[v0] Stream ended")
+                } else if (event.code === 11 && event.message === "MessageInfo") {
+                  // MessageInfo - log for debugging
+                  console.log("[v0] MessageInfo:", event.data)
+                } else if (event.code === 4 && event.message === "Cost") {
+                  // Cost information - log for debugging
+                  console.log("[v0] Cost:", event.data)
                 }
               } catch {
                 // Skip invalid JSON

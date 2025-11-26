@@ -15,6 +15,38 @@ export async function POST(request: NextRequest) {
       })
     }
 
+    // Validate conversationId format
+    if (typeof conversationId !== "string" || conversationId.trim().length === 0) {
+      return new Response(JSON.stringify({ error: "conversationId must be a non-empty string" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      })
+    }
+
+    // Validate messages format per API docs
+    if (!Array.isArray(messages) || messages.length === 0) {
+      return new Response(JSON.stringify({ error: "messages must be a non-empty array" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      })
+    }
+
+    // Validate each message has required fields
+    for (const msg of messages) {
+      if (!msg.role || (msg.role !== "user" && msg.role !== "assistant")) {
+        return new Response(JSON.stringify({ error: "Each message must have a valid role (user or assistant)" }), {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        })
+      }
+      if (!msg.content) {
+        return new Response(JSON.stringify({ error: "Each message must have content" }), {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        })
+      }
+    }
+
     // Call GPTBots API with streaming using our SSL-bypassing client
     const stream = await sendMessageStreaming(conversationId, messages as GPTBotsMessage[])
 

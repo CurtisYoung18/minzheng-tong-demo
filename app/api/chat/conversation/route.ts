@@ -12,6 +12,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "userId is required" }, { status: 400 })
     }
 
+    // Validate userId length (max 32 characters per API docs)
+    if (typeof userId !== "string" || userId.length > 32) {
+      return NextResponse.json(
+        { error: "userId must be a string with maximum 32 characters" },
+        { status: 400 }
+      )
+    }
+
     const conversationId = await createConversation(userId)
 
     console.log("[v0] API route - Conversation created:", conversationId)
