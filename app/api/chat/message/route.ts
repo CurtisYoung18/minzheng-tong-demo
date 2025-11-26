@@ -42,9 +42,17 @@ export async function POST(request: NextRequest) {
             for (const line of lines) {
               if (line.trim()) {
                 try {
-                  const event = JSON.parse(line)
-                  controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`))
-                } catch {
+                  // Handle SSE format: "data: {...}" or plain JSON
+                  let jsonStr = line.trim()
+                  if (jsonStr.startsWith("data:")) {
+                    jsonStr = jsonStr.slice(5).trim() // Remove "data:" prefix
+                  }
+                  
+                  if (jsonStr) {
+                    const event = JSON.parse(jsonStr)
+                    controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`))
+                  }
+                } catch (error) {
                   // Not valid JSON, skip
                   console.log("[v0] Skipping non-JSON line:", line.substring(0, 50))
                 }
@@ -55,8 +63,15 @@ export async function POST(request: NextRequest) {
           // Process remaining buffer
           if (buffer.trim()) {
             try {
-              const event = JSON.parse(buffer)
-              controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`))
+              let jsonStr = buffer.trim()
+              if (jsonStr.startsWith("data:")) {
+                jsonStr = jsonStr.slice(5).trim() // Remove "data:" prefix
+              }
+              
+              if (jsonStr) {
+                const event = JSON.parse(jsonStr)
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`))
+              }
             } catch {
               // Not valid JSON, skip
             }
