@@ -160,7 +160,7 @@ export default function ChatMain({
 
       {/* Messages */}
       <ScrollArea className="flex-1 min-h-0 p-6" ref={scrollRef}>
-        <div className="max-w-4xl space-y-6 pb-4 relative">
+        <div className="max-w-4xl ml-4 md:ml-8 lg:ml-12 space-y-6 pb-4 relative">
           {/* Quick Actions - shown when only welcome message exists */}
           {showQuickActions && messages.length <= 1 && (
             <QuickActions
