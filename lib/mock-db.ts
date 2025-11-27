@@ -149,7 +149,7 @@ export const mockUserAttributes = [
   {
     user_id: "U001",
     city: "福州",
-    phase: "30000", // 未授权 - 演示授权流程
+    phase: "10000", // 未授权 - 演示授权流程
     is_auth: false, // GPTBots 用户属性：是否已授权（用于触发授权卡片）
     is_authenticated: true,
     is_married: true,

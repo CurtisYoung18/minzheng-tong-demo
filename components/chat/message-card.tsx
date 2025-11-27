@@ -17,7 +17,7 @@ import SignCard from "./sign-card"
 import FinishCard from "./finish-card"
 
 // 业务卡片类型
-const BUSINESS_CARD_TYPES = ["auth", "sign", "finish"]
+const BUSINESS_CARD_TYPES = ["auth", "sign", "finish", "gjj_details"]
 
 interface MessageCardProps {
   message: Message

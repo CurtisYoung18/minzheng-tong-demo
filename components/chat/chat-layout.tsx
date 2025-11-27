@@ -1064,6 +1064,28 @@ export default function ChatLayout({ user }: ChatLayoutProps) {
           prev.map((m) => (m.id === aiMessageId ? { ...m, isThinking: false } : m))
         )
       }
+      
+      // 检查是否需要获取公积金详情
+      if (llmResponse?.card_type === "gjj_details") {
+        console.log("[v0] Detected gjj_details card, fetching account info...")
+        try {
+          const accountResponse = await fetch(`/api/account/info?userId=${user.userId}`)
+          if (accountResponse.ok) {
+            const { data: accountInfo } = await accountResponse.json()
+            console.log("[v0] Account info fetched for gjj_details card")
+            // 更新消息，添加 accountInfo
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === aiMessageId
+                  ? { ...m, accountInfo, llmCardType: undefined } // 清除 llmCardType，让 accountInfo 优先显示
+                  : m
+              )
+            )
+          }
+        } catch (fetchError) {
+          console.error("[v0] Failed to fetch account info for gjj_details:", fetchError)
+        }
+      }
     } catch (error) {
       console.error("Error sending message:", error)
       const errorMsg = error instanceof Error ? error.message : "发生未知错误"
