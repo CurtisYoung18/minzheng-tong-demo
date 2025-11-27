@@ -55,6 +55,7 @@ export default function ExtractFlowChart({
   onSelectExtractType,
   className
 }: ExtractFlowChartProps) {
+  const [isCollapsed, setIsCollapsed] = useState(false)
   const [expandedSteps, setExpandedSteps] = useState<Set<string>>(new Set(["signing"]))
 
   if (!userAttributes) {
@@ -358,34 +359,75 @@ export default function ExtractFlowChart({
     )
   }
 
+  const completedCount = flowSteps.filter(s => s.isCompleted).length
+  const progressPercent = Math.round((completedCount / flowSteps.length) * 100)
+
   return (
-    <div className={cn("p-3 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800", className)}>
-      <div className="flex items-center gap-2 mb-3 pb-2 border-b border-gray-100 dark:border-gray-800">
-        <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center">
+    <div className={cn("bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden", className)}>
+      {/* 可点击的标题栏 */}
+      <button
+        onClick={() => setIsCollapsed(!isCollapsed)}
+        className="w-full p-3 flex items-center gap-2 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+      >
+        <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center shrink-0">
           <FileText className="h-3.5 w-3.5 text-white" />
         </div>
-        <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">租房提取流程</span>
-      </div>
-      
-      <div className="space-y-1">
-        {flowSteps.map((step, index) => renderStep(step, index))}
-      </div>
-      
-      {/* 进度指示 */}
-      <div className="mt-3 pt-2 border-t border-gray-100 dark:border-gray-800">
-        <div className="flex items-center justify-between text-[10px] text-gray-400 mb-1">
-          <span>办理进度</span>
-          <span>{Math.round((flowSteps.filter(s => s.isCompleted).length / flowSteps.length) * 100)}%</span>
+        <span className="text-sm font-semibold text-gray-900 dark:text-gray-100 flex-1 text-left">租房提取流程</span>
+        
+        {/* 迷你进度指示 */}
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] text-gray-400">{progressPercent}%</span>
+          <div className="w-12 h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+            <div 
+              className="h-full bg-gradient-to-r from-green-400 to-emerald-500 rounded-full transition-all duration-300"
+              style={{ width: `${progressPercent}%` }}
+            />
+          </div>
         </div>
-        <div className="h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+        
+        <motion.div
+          animate={{ rotate: isCollapsed ? 0 : 180 }}
+          transition={{ duration: 0.2 }}
+          className="shrink-0"
+        >
+          <ChevronDown className="h-4 w-4 text-gray-400" />
+        </motion.div>
+      </button>
+      
+      {/* 可折叠的内容区域 */}
+      <AnimatePresence initial={false}>
+        {!isCollapsed && (
           <motion.div
-            className="h-full bg-gradient-to-r from-green-400 to-emerald-500 rounded-full"
-            initial={{ width: 0 }}
-            animate={{ width: `${(flowSteps.filter(s => s.isCompleted).length / flowSteps.length) * 100}%` }}
-            transition={{ duration: 0.5, ease: "easeOut" }}
-          />
-        </div>
-      </div>
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.25, ease: "easeInOut" }}
+            className="overflow-hidden"
+          >
+            <div className="px-3 pb-3 border-t border-gray-100 dark:border-gray-800">
+              <div className="space-y-1 pt-3">
+                {flowSteps.map((step, index) => renderStep(step, index))}
+              </div>
+              
+              {/* 底部进度条（详细） */}
+              <div className="mt-3 pt-2 border-t border-gray-100 dark:border-gray-800">
+                <div className="flex items-center justify-between text-[10px] text-gray-400 mb-1">
+                  <span>办理进度</span>
+                  <span>{completedCount}/{flowSteps.length} 步骤</span>
+                </div>
+                <div className="h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+                  <motion.div
+                    className="h-full bg-gradient-to-r from-green-400 to-emerald-500 rounded-full"
+                    initial={{ width: 0 }}
+                    animate={{ width: `${progressPercent}%` }}
+                    transition={{ duration: 0.5, ease: "easeOut" }}
+                  />
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }
