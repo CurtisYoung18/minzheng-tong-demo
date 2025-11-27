@@ -7,6 +7,8 @@ export interface Message {
   thinking?: string // AI thinking process (from <think> tags)
   thinkingComplete?: boolean // Whether thinking process is complete
   accountInfo?: AccountInfo // Account details for account query
+  isThinking?: boolean // Show thinking animation before content arrives
+  isQuerying?: boolean // Show "正在为您查询信息" animation for data queries
 }
 
 export interface AccountInfo {

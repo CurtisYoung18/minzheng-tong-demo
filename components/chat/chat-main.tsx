@@ -5,7 +5,7 @@ import { useState, useRef, useEffect } from "react"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
-import { Send, ThumbsUp, ThumbsDown, Paperclip, ImageIcon, Mic, FileText, X, Loader2, AlertCircle, Sparkles } from "lucide-react"
+import { Send, ThumbsUp, ThumbsDown, Paperclip, ImageIcon, FileText, X, Loader2, AlertCircle } from "lucide-react"
 import type { Message } from "@/types/chat"
 import MessageCard from "./message-card"
 import QuickActions from "./quick-actions"
@@ -43,12 +43,38 @@ export default function ChatMain({
   const [isFocused, setIsFocused] = useState(false)
   const [attachments, setAttachments] = useState<File[]>([])
   const [showAttachMenu, setShowAttachMenu] = useState(false)
+  const [isComposing, setIsComposing] = useState(false) // Track IME composition state
   const scrollRef = useRef<HTMLDivElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const imageInputRef = useRef<HTMLInputElement>(null)
-  const audioInputRef = useRef<HTMLInputElement>(null)
+  const attachMenuRef = useRef<HTMLDivElement>(null)
+  const attachButtonRef = useRef<HTMLButtonElement>(null)
+
+  // Close attach menu when clicking outside (but not on the button or menu)
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Node
+      const clickedOutsideMenu = attachMenuRef.current && !attachMenuRef.current.contains(target)
+      const clickedOutsideButton = attachButtonRef.current && !attachButtonRef.current.contains(target)
+      
+      if (clickedOutsideMenu && clickedOutsideButton) {
+        setShowAttachMenu(false)
+      }
+    }
+
+    if (showAttachMenu) {
+      // Use setTimeout to avoid closing immediately when menu opens
+      const timer = setTimeout(() => {
+        document.addEventListener("mousedown", handleClickOutside)
+      }, 0)
+      return () => {
+        clearTimeout(timer)
+        document.removeEventListener("mousedown", handleClickOutside)
+      }
+    }
+  }, [showAttachMenu])
 
   // Auto-scroll with smooth animation (throttled)
   const lastScrollTime = useRef(0)
@@ -71,13 +97,23 @@ export default function ChatMain({
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
+    // Don't send message if IME is composing (e.g., typing Chinese characters)
+    if (e.key === "Enter" && !e.shiftKey && !isComposing) {
       e.preventDefault()
       handleSubmit(e)
     }
   }
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>, type: "file" | "image" | "audio") => {
+  // IME composition handlers for proper Chinese/Japanese/Korean input
+  const handleCompositionStart = () => {
+    setIsComposing(true)
+  }
+
+  const handleCompositionEnd = () => {
+    setIsComposing(false)
+  }
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
     if (files) {
       setAttachments((prev) => [...prev, ...Array.from(files)])
@@ -92,7 +128,6 @@ export default function ChatMain({
 
   const getFileIcon = (file: File) => {
     if (file.type.startsWith("image/")) return <ImageIcon className="h-4 w-4" />
-    if (file.type.startsWith("audio/")) return <Mic className="h-4 w-4" />
     return <FileText className="h-4 w-4" />
   }
 
@@ -167,40 +202,7 @@ export default function ChatMain({
               </div>
             </div>
           ))}
-          {/* Loading indicator with thinking animation - smooth transition */}
-          <AnimatePresence>
-            {isLoading && messages[messages.length - 1]?.role === "user" && (
-              <motion.div
-                initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                transition={{ duration: 0.2, ease: "easeOut" }}
-                className="flex gap-3"
-              >
-                <img
-                  src={ASSISTANT_AVATAR || "/placeholder.svg"}
-                  alt="福晓金"
-                  className="w-10 h-10 rounded-full object-cover shrink-0 mt-1 bg-amber-50"
-                />
-                <motion.div
-                  initial={{ width: 0, opacity: 0 }}
-                  animate={{ width: "auto", opacity: 1 }}
-                  transition={{ duration: 0.3, ease: "easeOut" }}
-                  className="bg-gradient-to-r from-orange-50/50 to-blue-50/50 dark:from-orange-950/20 dark:to-blue-950/20 border border-orange-200/50 dark:border-orange-800/50 px-4 py-3 rounded-2xl rounded-tl-sm overflow-hidden"
-                >
-                  <div className="flex items-center gap-2 whitespace-nowrap">
-                    <div className="relative">
-                      <Sparkles className="h-4 w-4 text-orange-600 dark:text-orange-400 animate-pulse" />
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <div className="h-2 w-2 bg-orange-400 rounded-full animate-ping" />
-                      </div>
-                    </div>
-                    <span className="text-sm text-orange-700 dark:text-orange-300 font-medium">正在思考...</span>
-                  </div>
-                </motion.div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+          {/* Thinking animation is now handled directly in MessageCard via isThinking prop */}
           <div ref={messagesEndRef} />
         </div>
       </ScrollArea>
@@ -224,16 +226,53 @@ export default function ChatMain({
 
       {/* Input */}
       <div className="border-t border-border p-4 shrink-0">
-        <form onSubmit={handleSubmit} className="max-w-4xl mx-auto">
+        <form onSubmit={handleSubmit} className="max-w-4xl mx-auto relative">
+          {/* Attach Menu - positioned outside the input container to avoid clipping */}
+          <AnimatePresence>
+            {showAttachMenu && (
+              <motion.div
+                ref={attachMenuRef}
+                initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                transition={{ duration: 0.15, ease: "easeOut" }}
+                className="absolute bottom-full left-0 mb-2 bg-card border border-border rounded-xl shadow-2xl py-2 min-w-[160px] z-50"
+              >
+                <button
+                  type="button"
+                  className="w-full px-4 py-3 text-sm text-left hover:bg-muted flex items-center gap-3 transition-colors"
+                  onClick={() => {
+                    imageInputRef.current?.click()
+                    setShowAttachMenu(false)
+                  }}
+                >
+                  <ImageIcon className="h-5 w-5 text-blue-500" /> 图片
+                </button>
+                <button
+                  type="button"
+                  className="w-full px-4 py-3 text-sm text-left hover:bg-muted flex items-center gap-3 transition-colors"
+                  onClick={() => {
+                    fileInputRef.current?.click()
+                    setShowAttachMenu(false)
+                  }}
+                >
+                  <FileText className="h-5 w-5 text-orange-500" /> 文件
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           <div
-            className={`relative flex items-end rounded-full border-2 transition-all duration-300 ease-out overflow-hidden ${
+            className={`relative flex items-end rounded-full border-2 transition-all duration-300 ease-out ${
               isFocused
                 ? "border-primary bg-card shadow-lg shadow-primary/10"
                 : "border-border bg-input hover:border-primary/50"
             }`}
           >
+            {/* Attach button */}
             <div className="relative">
               <Button
+                ref={attachButtonRef}
                 type="button"
                 variant="ghost"
                 size="icon"
@@ -242,31 +281,6 @@ export default function ChatMain({
               >
                 <Paperclip className="h-5 w-5" />
               </Button>
-              {showAttachMenu && (
-                <div className="absolute bottom-14 left-0 bg-card border border-border rounded-lg shadow-lg py-2 min-w-[140px] z-10">
-                  <button
-                    type="button"
-                    className="w-full px-4 py-2 text-sm text-left hover:bg-muted flex items-center gap-2"
-                    onClick={() => imageInputRef.current?.click()}
-                  >
-                    <ImageIcon className="h-4 w-4" /> 图片
-                  </button>
-                  <button
-                    type="button"
-                    className="w-full px-4 py-2 text-sm text-left hover:bg-muted flex items-center gap-2"
-                    onClick={() => audioInputRef.current?.click()}
-                  >
-                    <Mic className="h-4 w-4" /> 语音
-                  </button>
-                  <button
-                    type="button"
-                    className="w-full px-4 py-2 text-sm text-left hover:bg-muted flex items-center gap-2"
-                    onClick={() => fileInputRef.current?.click()}
-                  >
-                    <FileText className="h-4 w-4" /> 文件
-                  </button>
-                </div>
-              )}
             </div>
 
             {/* Hidden file inputs */}
@@ -276,7 +290,7 @@ export default function ChatMain({
               className="hidden"
               accept=".pdf,.txt,.docx,.csv,.xlsx,.html,.json,.md"
               multiple
-              onChange={(e) => handleFileSelect(e, "file")}
+              onChange={handleFileSelect}
             />
             <input
               ref={imageInputRef}
@@ -284,14 +298,7 @@ export default function ChatMain({
               className="hidden"
               accept="image/*"
               multiple
-              onChange={(e) => handleFileSelect(e, "image")}
-            />
-            <input
-              ref={audioInputRef}
-              type="file"
-              className="hidden"
-              accept="audio/*"
-              onChange={(e) => handleFileSelect(e, "audio")}
+              onChange={handleFileSelect}
             />
 
             <Textarea
@@ -299,6 +306,8 @@ export default function ChatMain({
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
+              onCompositionStart={handleCompositionStart}
+              onCompositionEnd={handleCompositionEnd}
               onFocus={() => setIsFocused(true)}
               onBlur={() => setIsFocused(false)}
               placeholder="请输入你想咨询的内容"
@@ -306,6 +315,7 @@ export default function ChatMain({
               rows={1}
               disabled={isLoading}
             />
+            
             <Button
               type="submit"
               size="icon"

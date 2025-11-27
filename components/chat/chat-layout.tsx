@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useState, useCallback, useEffect, useRef } from "react"
+import { flushSync } from "react-dom"
 import ChatSidebar from "./chat-sidebar"
 import ChatMain from "./chat-main"
 import type { Message, ChatSession } from "@/types/chat"
@@ -70,7 +71,7 @@ export default function ChatLayout({ user }: ChatLayoutProps) {
   const [sessions, setSessions] = useState<ChatSession[]>([
     {
       id: "1",
-      title: "公积金提取咨询",
+      title: "新会话",
       createdAt: new Date(),
       messages: [],
     },
@@ -89,6 +90,108 @@ export default function ChatLayout({ user }: ChatLayoutProps) {
   const [conversationId, setConversationId] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [connectionError, setConnectionError] = useState<string | null>(null)
+  const [titleGenerated, setTitleGenerated] = useState(false) // Track if title has been generated for current session
+  const titleGenerationAttempted = useRef(false) // Prevent multiple title generation attempts
+
+  // Function to generate session title using AI
+  const generateSessionTitle = useCallback(async (messageList: Message[], sessionId: string) => {
+    // Filter messages that have actual content for conversation history
+    const validMessages = messageList.filter(
+      (m) => m.id !== "welcome" && 
+             !m.isThinking && 
+             !m.isQuerying &&
+             (m.content?.trim() || m.accountInfo)
+    )
+
+    // Build conversation history string
+    // For messages with accountInfo but no content, create a summary
+    const conversationHistory = validMessages
+      .slice(0, 6) // Take first 3 rounds (6 messages)
+      .map((m) => {
+        if (m.accountInfo && !m.content?.trim()) {
+          return `${m.role}: [显示了用户的公积金账户信息卡片]`
+        }
+        return `${m.role}: ${m.content}`
+      })
+      .join("\n\n")
+
+    console.log("[Title] Generating title with conversation history:", conversationHistory.substring(0, 200))
+
+    try {
+      const response = await fetch("/api/chat/title", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: user.userId,
+          conversationHistory,
+        }),
+      })
+
+      if (!response.ok) {
+        console.error("[Title] Failed to generate title")
+        return
+      }
+
+      const data = await response.json()
+      if (data.title) {
+        console.log("[Title] Generated title:", data.title)
+        setSessions((prev) =>
+          prev.map((s) => (s.id === sessionId ? { ...s, title: data.title } : s))
+        )
+        setTitleGenerated(true)
+      }
+    } catch (error) {
+      console.error("[Title] Error generating title:", error)
+    }
+  }, [user.userId])
+
+  // Effect to trigger title generation when messages update
+  useEffect(() => {
+    // Skip if title already generated or generation attempted, or if still loading
+    if (titleGenerated || titleGenerationAttempted.current || isLoading) {
+      return
+    }
+
+    // Filter valid user messages (must have content and not be in thinking state)
+    const userMessages = messages.filter(
+      (m) => m.id !== "welcome" && m.role === "user" && m.content && m.content.trim() !== ""
+    )
+    
+    // Filter valid assistant messages (must have content OR accountInfo, and not be in thinking/querying state)
+    const assistantMessages = messages.filter(
+      (m) => m.id !== "welcome" && 
+             m.role === "assistant" && 
+             !m.isThinking && 
+             !m.isQuerying &&
+             (m.content?.trim() || m.accountInfo)
+    )
+    
+    console.log("[Title] Checking title generation - userMessages:", userMessages.length, "assistantMessages:", assistantMessages.length)
+    
+    // Check if we have at least 3 user messages and 3 assistant responses
+    if (userMessages.length >= 3 && assistantMessages.length >= 3) {
+      console.log("[Title] Triggering AI title generation after 3 rounds")
+      titleGenerationAttempted.current = true
+      generateSessionTitle(messages, activeSessionId)
+    } else if (userMessages.length >= 1 && assistantMessages.length >= 1) {
+      // Update title with first user message if not yet set
+      const currentSession = sessions.find((s) => s.id === activeSessionId)
+      if (currentSession?.title === "新会话") {
+        const firstUserMessage = userMessages[0].content
+        const title = firstUserMessage.substring(0, 15) + (firstUserMessage.length > 15 ? "..." : "")
+        console.log("[Title] Setting initial title from first message:", title)
+        setSessions((prev) =>
+          prev.map((s) => (s.id === activeSessionId ? { ...s, title } : s))
+        )
+      }
+    }
+  }, [messages, isLoading, titleGenerated, activeSessionId, sessions, generateSessionTitle])
+
+  // Reset title generation flag when switching sessions
+  useEffect(() => {
+    titleGenerationAttempted.current = false
+    setTitleGenerated(false)
+  }, [activeSessionId])
 
   const initConversation = useCallback(async () => {
     if (conversationId) return conversationId
@@ -130,6 +233,7 @@ export default function ChatLayout({ user }: ChatLayoutProps) {
     setActiveSessionId(newSession.id)
     setConversationId(null)
     setConnectionError(null)
+    setTitleGenerated(false) // Reset title generation flag for new session
     setMessages([
       {
         id: "welcome",
@@ -150,15 +254,31 @@ export default function ChatLayout({ user }: ChatLayoutProps) {
   }
 
   const handleAccountQuery = async () => {
+    const userMessageId = Date.now().toString()
+    const aiMessageId = (Date.now() + 1).toString()
+    
     // Add user message for account query
     const userMessage: Message = {
-      id: Date.now().toString(),
+      id: userMessageId,
       role: "user",
       content: "我要查询公积金账户信息",
       timestamp: new Date(),
     }
-    setMessages((prev) => [...prev, userMessage])
-    setIsLoading(true)
+    
+    // Create AI message with querying state immediately
+    const aiMessage: Message = {
+      id: aiMessageId,
+      role: "assistant",
+      content: "",
+      timestamp: new Date(),
+      isQuerying: true, // Show "正在为您查询信息" animation
+    }
+    
+    // Use flushSync to ensure UI updates immediately
+    flushSync(() => {
+      setMessages((prev) => [...prev, userMessage, aiMessage])
+      setIsLoading(true)
+    })
 
     try {
       // Fetch account info from API
@@ -168,15 +288,14 @@ export default function ChatLayout({ user }: ChatLayoutProps) {
       }
       const { data: accountInfo } = await response.json()
 
-      // Create AI message with account info card
-      const aiMessageWithCard: Message = {
-        id: (Date.now() + 1).toString(),
-        role: "assistant",
-        content: "",
-        timestamp: new Date(),
-        accountInfo,
-      }
-      setMessages((prev) => [...prev, aiMessageWithCard])
+      // Update the AI message with account info card (remove isQuerying)
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === aiMessageId
+            ? { ...m, accountInfo, isQuerying: false }
+            : m
+        )
+      )
 
       // Now send to AI for summary
       const convId = await initConversation()
@@ -331,23 +450,41 @@ export default function ChatLayout({ user }: ChatLayoutProps) {
   }
 
   const handleSendMessage = async (content: string, attachments?: File[]) => {
+    const userMessageId = Date.now().toString()
+    const aiMessageId = (Date.now() + 1).toString()
+    
     const userMessage: Message = {
-      id: Date.now().toString(),
+      id: userMessageId,
       role: "user",
       content,
       timestamp: new Date(),
     }
 
-    setMessages((prev) => [...prev, userMessage])
-    setIsLoading(true)
-    setConnectionError(null)
-    
-    // Show thinking animation immediately after user message is sent
-    // This ensures no blank waiting period
+    // Create AI message immediately with "isThinking" state
+    // This ensures the thinking animation shows INSTANTLY without any blank period
+    const aiMessage: Message = {
+      id: aiMessageId,
+      role: "assistant",
+      content: "",
+      timestamp: new Date(),
+      isThinking: true, // New flag to show thinking state
+    }
+
+    // Use flushSync to ensure both messages are added synchronously
+    flushSync(() => {
+      setMessages((prev) => [...prev, userMessage, aiMessage])
+      setIsLoading(true)
+      setConnectionError(null)
+    })
 
     try {
       const convId = await initConversation()
-      const messageContent: MessageContent[] = [{ type: "text", text: content }]
+      const messageContent: MessageContent[] = []
+      
+      // Only add text content if there's actual text
+      if (content && content.trim()) {
+        messageContent.push({ type: "text", text: content })
+      }
 
       // 处理附件
       if (attachments && attachments.length > 0) {
@@ -404,17 +541,6 @@ export default function ChatLayout({ user }: ChatLayoutProps) {
         const error = await response.json()
         throw new Error(error.error || "Failed to send message")
       }
-
-      const aiMessageId = (Date.now() + 1).toString()
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: aiMessageId,
-          role: "assistant",
-          content: "",
-          timestamp: new Date(),
-        },
-      ])
 
       // Handle streaming response with real-time thinking parsing
       const reader = response.body?.getReader()
@@ -501,6 +627,7 @@ export default function ChatLayout({ user }: ChatLayoutProps) {
                   content: fullContent || "",
                   thinking: thinkingContent || undefined,
                   thinkingComplete: thinkingComplete,
+                  isThinking: !fullContent && !thinkingComplete, // Clear isThinking when content arrives
                 }
               : m
           )
@@ -579,6 +706,11 @@ export default function ChatLayout({ user }: ChatLayoutProps) {
                 } else if (event.code === 4 && event.message === "Cost") {
                   // Cost information - log for debugging
                   console.log("[v0] Cost:", event.data)
+                } else if (event.code >= 20000 || event.code >= 40000) {
+                  // Error codes from API
+                  console.error("[v0] API Error:", event.code, event.message)
+                  fullContent = "抱歉，处理您的请求时出现了问题，请稍后再试。"
+                  updateUI(true)
                 }
               } catch {
                 // Skip invalid JSON
@@ -604,7 +736,12 @@ export default function ChatLayout({ user }: ChatLayoutProps) {
       
       if (!fullContent && !thinkingContent) {
         setMessages((prev) =>
-          prev.map((m) => (m.id === aiMessageId ? { ...m, content: "抱歉，我暂时无法处理您的请求，请稍后再试。" } : m))
+          prev.map((m) => (m.id === aiMessageId ? { ...m, content: "抱歉，我暂时无法处理您的请求，请稍后再试。", isThinking: false } : m))
+        )
+      } else {
+        // Ensure isThinking is cleared after stream completes
+        setMessages((prev) =>
+          prev.map((m) => (m.id === aiMessageId ? { ...m, isThinking: false } : m))
         )
       }
     } catch (error) {
@@ -637,6 +774,9 @@ export default function ChatLayout({ user }: ChatLayoutProps) {
         onDeleteSession={handleDeleteSession}
         isOpen={sidebarOpen}
         onToggle={() => setSidebarOpen(!sidebarOpen)}
+        onAccountQuery={handleAccountQuery}
+        onExtraction={handleSendMessage}
+        showQuickActions={messages.length > 1}
       />
       <ChatMain
         messages={messages}

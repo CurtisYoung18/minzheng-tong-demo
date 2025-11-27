@@ -1,10 +1,13 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
+import ReactMarkdown from "react-markdown"
+import remarkGfm from "remark-gfm"
+import rehypeRaw from "rehype-raw"
 import { Card, CardContent } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
-import { Download, ChevronDown, ChevronUp } from "lucide-react"
+import { Download, ChevronDown, ChevronUp, Sparkles, Search } from "lucide-react"
 import type { Message } from "@/types/chat"
 import ThinkingProcess from "./thinking-process"
 import AccountDetailsCard from "./account-details-card"
@@ -16,6 +19,28 @@ interface MessageCardProps {
 
 export default function MessageCard({ message, userId }: MessageCardProps) {
   const [expanded, setExpanded] = useState(true)
+
+  // Show querying animation for data queries (e.g., account info)
+  if (message.isQuerying && !message.accountInfo && !message.content) {
+    return (
+      <div className="bg-gradient-to-r from-blue-50/80 to-cyan-50/80 dark:from-blue-950/30 dark:to-cyan-950/30 border border-blue-200/60 dark:border-blue-800/50 px-4 py-3 rounded-2xl rounded-tl-sm">
+        <div className="flex items-center gap-2.5">
+          <div className="relative flex items-center justify-center">
+            <Search className="h-4 w-4 text-blue-500 dark:text-blue-400 animate-pulse" />
+            <span className="absolute flex h-3 w-3">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+            </span>
+          </div>
+          <span className="text-sm text-blue-700 dark:text-blue-300 font-medium">正在为您查询信息...</span>
+          <div className="flex gap-1 ml-1">
+            <span className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
+            <span className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
+            <span className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   // Check if message has account info
   if (message.accountInfo) {
@@ -126,6 +151,28 @@ export default function MessageCard({ message, userId }: MessageCardProps) {
     )
   }
 
+  // Show thinking animation when isThinking is true and no content yet
+  if (message.isThinking && !message.content && !message.thinking) {
+    return (
+      <div className="bg-gradient-to-r from-orange-50/80 to-amber-50/80 dark:from-orange-950/30 dark:to-amber-950/30 border border-orange-200/60 dark:border-orange-800/50 px-4 py-3 rounded-2xl rounded-tl-sm">
+        <div className="flex items-center gap-2.5">
+          <div className="relative flex items-center justify-center">
+            <Sparkles className="h-4 w-4 text-orange-500 dark:text-orange-400" />
+            <span className="absolute flex h-3 w-3">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span>
+            </span>
+          </div>
+          <span className="text-sm text-orange-700 dark:text-orange-300 font-medium">正在思考...</span>
+          <div className="flex gap-1 ml-1">
+            <span className="w-1.5 h-1.5 bg-orange-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
+            <span className="w-1.5 h-1.5 bg-orange-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
+            <span className="w-1.5 h-1.5 bg-orange-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   // Regular text message with thinking process
   return (
     <div className="max-w-full space-y-2">
@@ -138,10 +185,29 @@ export default function MessageCard({ message, userId }: MessageCardProps) {
         />
       )}
       
-      {/* Main Content */}
+      {/* Main Content with Markdown and HTML rendering */}
       {message.content && (
         <div className="bg-secondary/80 px-4 py-3 rounded-2xl rounded-tl-sm">
-          <p className="whitespace-pre-wrap text-foreground leading-relaxed">{message.content}</p>
+          <div className="prose prose-sm dark:prose-invert max-w-none text-foreground leading-relaxed
+            prose-p:my-2 prose-p:leading-relaxed
+            prose-headings:text-foreground prose-headings:font-semibold prose-headings:mt-4 prose-headings:mb-2
+            prose-h1:text-xl prose-h2:text-lg prose-h3:text-base
+            prose-ul:my-2 prose-ol:my-2 prose-li:my-0.5
+            prose-code:bg-muted prose-code:text-foreground prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-sm prose-code:before:content-none prose-code:after:content-none
+            prose-pre:bg-muted prose-pre:text-foreground prose-pre:p-3 prose-pre:rounded-lg prose-pre:overflow-x-auto
+            prose-a:text-primary prose-a:no-underline hover:prose-a:underline
+            prose-blockquote:border-l-primary prose-blockquote:text-muted-foreground prose-blockquote:italic
+            prose-table:text-sm prose-th:bg-muted prose-th:px-3 prose-th:py-2 prose-td:px-3 prose-td:py-2 prose-td:border-border
+            prose-strong:text-foreground prose-strong:font-semibold
+            prose-hr:border-border
+            [&_span]:inline">
+            <ReactMarkdown 
+              remarkPlugins={[remarkGfm]} 
+              rehypePlugins={[rehypeRaw]}
+            >
+              {message.content}
+            </ReactMarkdown>
+          </div>
         </div>
       )}
     </div>
