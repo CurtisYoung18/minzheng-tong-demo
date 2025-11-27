@@ -47,7 +47,7 @@ export default function MessageCard({ message, userId }: MessageCardProps) {
     return (
       <AccountDetailsCard
         accountInfo={message.accountInfo}
-        className="w-full max-w-md"
+        className="w-full max-w-xl"
       />
     )
   }
