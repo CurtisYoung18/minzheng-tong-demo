@@ -912,23 +912,112 @@ export default function ChatLayout({ user }: ChatLayoutProps) {
         )
       }
       
-      // 检查是否需要获取公积金详情
+      // 检查是否需要获取公积金详情并生成友好总结
       const finalLlmResponse = isJsonMode ? parseLLMJsonResponse(jsonBuffer.trim()) : null
       if (finalLlmResponse?.card_type === "gjj_details") {
-        console.log("[v0] Detected gjj_details card, fetching account info...")
+        console.log("[v0] Detected gjj_details card, fetching account info and generating summary...")
         try {
           const accountResponse = await fetch(`/api/account/info?userId=${user.userId}`)
           if (accountResponse.ok) {
             const { data: accountInfo } = await accountResponse.json()
             console.log("[v0] Account info fetched for gjj_details card")
-            // 更新消息，添加 accountInfo
+            
+            // 更新当前消息，添加 accountInfo 展示账户卡片
             setMessages((prev) =>
               prev.map((m) =>
                 m.id === aiMessageId
-                  ? { ...m, accountInfo, llmCardType: undefined } // 清除 llmCardType，让 accountInfo 优先显示
+                  ? { ...m, accountInfo, llmCardType: undefined, content: "" } // 清除 content 和 llmCardType，让 accountInfo 卡片优先显示
                   : m
               )
             )
+            
+            // 构造账户信息 JSON 发送给 AI 生成友好总结
+            const accountInfoJson = JSON.stringify(accountInfo)
+            const summaryPrompt = `用户想要查询公积金账号，这是其账号详细信息：${accountInfoJson}，请做一个简短友好的总结，告诉用户他的账户基本情况。`
+            
+            // 发送新请求让 AI 生成总结（不显示用户消息）
+            console.log("[v0] Sending account summary request to AI...")
+            
+            // 创建一个新的 AI 消息用于展示总结
+            const summaryMessageId = (Date.now() + 2).toString()
+            setMessages((prev) => [
+              ...prev,
+              {
+                id: summaryMessageId,
+                role: "assistant",
+                content: "",
+                timestamp: new Date(),
+                isThinking: true,
+              },
+            ])
+            
+            // 调用 API 获取总结
+            const summaryResponse = await fetch("/api/chat/message", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                conversationId,
+                message: summaryPrompt,
+                userId: user.userId,
+              }),
+            })
+            
+            if (summaryResponse.ok && summaryResponse.body) {
+              const summaryReader = summaryResponse.body.getReader()
+              const summaryDecoder = new TextDecoder()
+              let summaryContent = ""
+              let summaryJsonBuffer = ""
+              let summaryIsJsonMode = false
+              
+              while (true) {
+                const { done, value } = await summaryReader.read()
+                if (done) break
+                
+                const chunk = summaryDecoder.decode(value, { stream: true })
+                const lines = chunk.split("\n")
+                
+                for (const line of lines) {
+                  if (!line.startsWith("data:")) continue
+                  const jsonStr = line.slice(5).trim()
+                  if (!jsonStr || jsonStr === "[DONE]") continue
+                  
+                  try {
+                    const event = JSON.parse(jsonStr)
+                    if (event.event === 3) { // Text
+                      const text = event.data?.data || ""
+                      if (!summaryIsJsonMode && text.trim().startsWith("{")) {
+                        summaryIsJsonMode = true
+                      }
+                      if (summaryIsJsonMode) {
+                        summaryJsonBuffer += text
+                      } else {
+                        summaryContent += text
+                      }
+                    }
+                  } catch {
+                    // Ignore parse errors
+                  }
+                }
+              }
+              
+              // 解析总结内容
+              let finalSummary = summaryContent
+              if (summaryIsJsonMode && summaryJsonBuffer) {
+                const parsedSummary = parseLLMJsonResponse(summaryJsonBuffer.trim())
+                if (parsedSummary?.content) {
+                  finalSummary = parsedSummary.content
+                }
+              }
+              
+              // 更新总结消息
+              setMessages((prev) =>
+                prev.map((m) =>
+                  m.id === summaryMessageId
+                    ? { ...m, content: finalSummary || "您的公积金账户信息已展示在上方卡片中。", isThinking: false }
+                    : m
+                )
+              )
+            }
           }
         } catch (fetchError) {
           console.error("[v0] Failed to fetch account info for gjj_details:", fetchError)
