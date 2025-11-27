@@ -265,16 +265,20 @@ export default function ChatLayout({ user }: ChatLayoutProps) {
     
     // 重置用户 mock 数据到初始状态（用于演示）
     try {
-      await fetch("/api/user/reset", {
+      const resetResponse = await fetch("/api/user/reset", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId: user.userId }),
       })
+      if (resetResponse.ok) {
+        console.log("[v0] User attributes reset successfully")
+      }
     } catch (error) {
       console.error("[v0] Failed to reset user attributes:", error)
     }
     
-    fetchUserAttributes() // 重新获取用户属性
+    // 等待一下确保数据更新完成，然后重新获取用户属性
+    await fetchUserAttributes()
     setMessages([
       {
         id: "welcome",
