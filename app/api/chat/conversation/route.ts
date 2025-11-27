@@ -27,15 +27,19 @@ export async function POST(request: NextRequest) {
 
     // Fetch user attributes from database and sync to GPTBots
     try {
+      console.log("[v0] Fetching user attributes for userId:", userId)
       const userAttributes = await getUserAttributes(userId)
       
       if (userAttributes) {
         console.log("[v0] User attributes found:", userAttributes)
+        console.log("[v0] User phase:", userAttributes.phase)
+        console.log("[v0] User is_auth:", userAttributes.is_auth)
         
         // Build property values array for GPTBots
         const propertyValues: PropertyValue[] = [
           { property_name: "city", value: userAttributes.city },
           { property_name: "phase", value: userAttributes.phase },
+          { property_name: "is_auth", value: userAttributes.is_auth },
         ]
 
         // Sync user attributes to GPTBots

@@ -150,6 +150,7 @@ export const mockUserAttributes = [
     user_id: "U001",
     city: "福州",
     phase: "30000", // 未授权 - 演示授权流程
+    is_auth: false, // GPTBots 用户属性：是否已授权（用于触发授权卡片）
     is_authenticated: true,
     is_married: true,
     spouse_authorized: true,
@@ -169,6 +170,7 @@ export const mockUserAttributes = [
     user_id: "U002",
     city: "泉州",
     phase: "80000", // 本人未手机签约 - 演示手机签约流程
+    is_auth: true, // 已授权
     is_authenticated: false,
     is_married: false,
     spouse_authorized: false,
@@ -188,6 +190,7 @@ export const mockUserAttributes = [
     user_id: "U003",
     city: "厦门",
     phase: "90000", // 本人未银行卡签约 - 演示银行卡签约流程
+    is_auth: true, // 已授权
     is_authenticated: true,
     is_married: false,
     spouse_authorized: false,
@@ -207,6 +210,7 @@ export const mockUserAttributes = [
     user_id: "U004",
     city: "莆田",
     phase: "15000", // 满足租房提取条件 - 演示提取流程
+    is_auth: true, // 已授权
     is_authenticated: true,
     is_married: true,
     spouse_authorized: false,
@@ -266,6 +270,7 @@ export interface MockUserAttributes {
   user_id: string
   city: string
   phase: string
+  is_auth: boolean // GPTBots 用户属性
   is_authenticated: boolean
   is_married: boolean
   spouse_authorized: boolean

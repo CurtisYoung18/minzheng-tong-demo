@@ -274,7 +274,36 @@ export default function ChatLayout({ user }: ChatLayoutProps) {
     })
 
     try {
-      // Fetch account info from API
+      // 首先检查用户是否已授权 (is_auth)
+      const attrResponse = await fetch(`/api/user/attribute?userId=${user.userId}`)
+      const attrData = await attrResponse.json()
+      const isAuth = attrData?.data?.is_auth === true
+      
+      console.log(`[Account Query] User is_auth: ${isAuth}`)
+      
+      // 如果用户未授权，不显示账户信息，提示用户需要先授权
+      if (!isAuth) {
+        console.log("[Account Query] User not authorized, showing auth prompt")
+        
+        // 更新 AI 消息，显示需要授权的提示和授权卡片
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === aiMessageId
+              ? { 
+                  ...m, 
+                  isQuerying: false, 
+                  content: "您好！在查询公积金账户信息之前，需要您先完成信息授权。请点击下方授权卡片完成授权后，即可查看您的账户详情。",
+                  llmCardType: "auth" as const,
+                  llmCardMessage: "请先完成信息授权"
+                }
+              : m
+          )
+        )
+        setIsLoading(false)
+        return
+      }
+      
+      // 用户已授权，正常获取并显示账户信息
       const response = await fetch(`/api/account/info?userId=${user.userId}`)
       if (!response.ok) {
         throw new Error("获取账户信息失败")
@@ -540,18 +569,18 @@ export default function ChatLayout({ user }: ChatLayoutProps) {
   const handleBusinessCardAction = async (cardType: string, action: string, extraData?: { message?: string }) => {
     console.log(`[Business Card] Type: ${cardType}, Action: ${action}`, extraData)
     
-    if (cardType === "withdrawl_auth" && action === "confirm") {
+    if (cardType === "auth" && action === "confirm") {
       try {
-        // 更新用户 phase 为 30001（完成授权）
-        console.log(`[Business Card] Updating phase for user ${user.userId} to 30001`)
+        // 更新用户 is_auth 为 true（完成授权）
+        console.log(`[Business Card] Updating is_auth for user ${user.userId} to true`)
         
         const response = await fetch("/api/user/attribute", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             userId: user.userId,
-            attributeName: "phase",
-            value: "30001",
+            attributeName: "is_auth",
+            value: true,
           }),
         })
 

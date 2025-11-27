@@ -66,6 +66,7 @@ export interface UserAttributes {
   user_id: string
   city: string
   phase: string
+  is_auth: boolean // GPTBots 用户属性：是否已授权
   is_authenticated: boolean
   is_married: boolean
   spouse_authorized: boolean

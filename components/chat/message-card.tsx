@@ -17,7 +17,7 @@ import SignCard from "./sign-card"
 import FinishCard from "./finish-card"
 
 // 业务卡片类型
-const BUSINESS_CARD_TYPES = ["withdrawl_auth", "sign", "finish"]
+const BUSINESS_CARD_TYPES = ["auth", "sign", "finish"]
 
 interface MessageCardProps {
   message: Message
@@ -252,10 +252,11 @@ export default function MessageCard({
       )}
       
       {/* Business Card - 授权卡片 */}
-      {llmCardType === "withdrawl_auth" && userInfo && onBusinessCardAction && (
+      {/* Business Card - 授权卡片 (card_type: "auth") */}
+      {llmCardType === "auth" && userInfo && onBusinessCardAction && (
         <AuthCard
           userInfo={userInfo}
-          onConfirm={() => onBusinessCardAction("withdrawl_auth", "confirm")}
+          onConfirm={() => onBusinessCardAction("auth", "confirm")}
         />
       )}
       
