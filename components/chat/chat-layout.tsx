@@ -129,7 +129,7 @@ export default function ChatLayout({ user }: ChatLayoutProps) {
       })
 
       if (!response.ok) {
-        console.error("[Title] Failed to generate title")
+        // 标题生成失败不影响主功能，静默处理
         return
       }
 

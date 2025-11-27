@@ -144,11 +144,18 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ title })
   } catch (error) {
-    console.error("[Title API] Error:", error)
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Unknown error" },
-      { status: 500 }
-    )
+    // 标题生成失败时，返回基于对话内容的默认标题
+    console.warn("[Title API] Error (using fallback):", error instanceof Error ? error.message : "Unknown error")
+    
+    try {
+      const { conversationHistory } = await request.clone().json()
+      // 从对话历史中提取第一句话作为标题
+      const firstLine = conversationHistory?.split("\n")[0]?.trim() || "新会话"
+      const title = firstLine.substring(0, 20)
+      return NextResponse.json({ title })
+    } catch {
+      return NextResponse.json({ title: "新会话" })
+    }
   }
 }
 
