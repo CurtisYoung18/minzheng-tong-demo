@@ -912,10 +912,10 @@ export default function ChatLayout({ user }: ChatLayoutProps) {
         )
       }
       
-      // 检查是否需要获取公积金详情并生成友好总结
+      // 检查是否需要获取公积金详情
       const finalLlmResponse = isJsonMode ? parseLLMJsonResponse(jsonBuffer.trim()) : null
       if (finalLlmResponse?.card_type === "gjj_details") {
-        console.log("[v0] Detected gjj_details card, fetching account info and generating summary...")
+        console.log("[v0] Detected gjj_details card, fetching account info...")
         try {
           const accountResponse = await fetch(`/api/account/info?userId=${user.userId}`)
           if (accountResponse.ok) {
@@ -930,116 +930,6 @@ export default function ChatLayout({ user }: ChatLayoutProps) {
                   : m
               )
             )
-            
-            // 构造账户信息 JSON 发送给 AI 生成友好总结
-            const accountInfoJson = JSON.stringify(accountInfo)
-            const summaryPrompt = `用户想要查询公积金账号，这是其账号详细信息：${accountInfoJson}，请做一个简短友好的总结，告诉用户他的账户基本情况。`
-            
-            // 发送新请求让 AI 生成总结（不显示用户消息）
-            console.log("[v0] Sending account summary request to AI...")
-            
-            // 创建一个新的 AI 消息用于展示总结
-            const summaryMessageId = (Date.now() + 2).toString()
-            setMessages((prev) => [
-              ...prev,
-              {
-                id: summaryMessageId,
-                role: "assistant",
-                content: "",
-                timestamp: new Date(),
-                isThinking: true,
-              },
-            ])
-            
-            // 调用 API 获取总结
-            const summaryResponse = await fetch("/api/chat/message", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                conversationId,
-                messages: [
-                  {
-                    role: "user",
-                    content: [{ type: "text", text: summaryPrompt }],
-                  },
-                ],
-              }),
-            })
-            
-            if (summaryResponse.ok && summaryResponse.body) {
-              const summaryReader = summaryResponse.body.getReader()
-              const summaryDecoder = new TextDecoder()
-              let summaryContent = ""
-              let summaryJsonBuffer = ""
-              let summaryIsJsonMode = false
-              
-              while (true) {
-                const { done, value } = await summaryReader.read()
-                if (done) break
-                
-                const chunk = summaryDecoder.decode(value, { stream: true })
-                const lines = chunk.split("\n")
-                
-                for (const line of lines) {
-                  if (!line.startsWith("data:")) continue
-                  const jsonStr = line.slice(5).trim()
-                  if (!jsonStr || jsonStr === "[DONE]") continue
-                  
-                  try {
-                    const event = JSON.parse(jsonStr)
-                    if (event.event === 3) { // Text
-                      const text = event.data?.data || ""
-                      if (!summaryIsJsonMode && text.trim().startsWith("{")) {
-                        summaryIsJsonMode = true
-                      }
-                      if (summaryIsJsonMode) {
-                        summaryJsonBuffer += text
-                      } else {
-                        summaryContent += text
-                      }
-                    }
-                  } catch {
-                    // Ignore parse errors
-                  }
-                }
-              }
-              
-              // 解析总结内容
-              let finalSummary = summaryContent
-              console.log("[v0] Summary - isJsonMode:", summaryIsJsonMode)
-              console.log("[v0] Summary - jsonBuffer:", summaryJsonBuffer)
-              console.log("[v0] Summary - content:", summaryContent)
-              
-              if (summaryIsJsonMode && summaryJsonBuffer) {
-                const parsedSummary = parseLLMJsonResponse(summaryJsonBuffer.trim())
-                console.log("[v0] Summary - parsed:", parsedSummary)
-                if (parsedSummary?.content) {
-                  finalSummary = parsedSummary.content
-                } else if (summaryJsonBuffer) {
-                  // 如果解析失败，尝试直接从 buffer 提取 content
-                  try {
-                    const directParse = JSON.parse(summaryJsonBuffer.trim())
-                    if (directParse.content) {
-                      finalSummary = directParse.content
-                      console.log("[v0] Summary - direct parse content:", finalSummary)
-                    }
-                  } catch {
-                    console.log("[v0] Summary - direct parse failed")
-                  }
-                }
-              }
-              
-              console.log("[v0] Summary - final:", finalSummary)
-              
-              // 更新总结消息
-              setMessages((prev) =>
-                prev.map((m) =>
-                  m.id === summaryMessageId
-                    ? { ...m, content: finalSummary || "您的公积金账户信息已展示在上方卡片中。", isThinking: false }
-                    : m
-                )
-              )
-            }
           }
         } catch (fetchError) {
           console.error("[v0] Failed to fetch account info for gjj_details:", fetchError)
