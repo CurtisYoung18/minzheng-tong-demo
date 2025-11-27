@@ -91,6 +91,16 @@ export default function ChatLayout({ user }: ChatLayoutProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [connectionError, setConnectionError] = useState<string | null>(null)
   const [titleGenerated, setTitleGenerated] = useState(false) // Track if title has been generated for current session
+  
+  // 流程图相关状态
+  const [flowUserAttributes, setFlowUserAttributes] = useState<{
+    is_auth: boolean
+    is_married: boolean
+    permit_extract_types: string[]
+    phase: string
+  } | null>(null)
+  const [selectedExtractType, setSelectedExtractType] = useState<string | null>(null)
+  const [isFlowFinished, setIsFlowFinished] = useState(false)
   const titleGenerationAttempted = useRef(false) // Prevent multiple title generation attempts
 
   // Function to generate session title using AI
@@ -215,6 +225,38 @@ export default function ChatLayout({ user }: ChatLayoutProps) {
     }
   }, [conversationId, user.userId])
 
+  // 获取用户属性（用于流程图）
+  const fetchUserAttributes = useCallback(async () => {
+    try {
+      const response = await fetch(`/api/user/attribute?userId=${user.userId}`)
+      if (response.ok) {
+        const data = await response.json()
+        if (data.data) {
+          setFlowUserAttributes({
+            is_auth: data.data.is_auth ?? false,
+            is_married: data.data.is_married ?? false,
+            permit_extract_types: data.data.permit_extract_types ?? [],
+            phase: data.data.phase ?? "10000"
+          })
+        }
+      }
+    } catch (error) {
+      console.error("[Flow] Failed to fetch user attributes:", error)
+    }
+  }, [user.userId])
+
+  // 初始化时获取用户属性
+  useEffect(() => {
+    fetchUserAttributes()
+  }, [fetchUserAttributes])
+
+  // 消息变化时更新用户属性（phase 可能变化）
+  useEffect(() => {
+    if (messages.length > 1) {
+      fetchUserAttributes()
+    }
+  }, [messages.length, fetchUserAttributes])
+
   const handleNewSession = () => {
     const newSession: ChatSession = {
       id: Date.now().toString(),
@@ -227,6 +269,9 @@ export default function ChatLayout({ user }: ChatLayoutProps) {
     setConversationId(null)
     setConnectionError(null)
     setTitleGenerated(false) // Reset title generation flag for new session
+    setSelectedExtractType(null) // 重置选择的提取类型
+    setIsFlowFinished(false) // 重置完成状态
+    fetchUserAttributes() // 重新获取用户属性
     setMessages([
       {
         id: "welcome",
@@ -401,6 +446,7 @@ export default function ChatLayout({ user }: ChatLayoutProps) {
   // 查看提取记录
   const handleViewRecords = () => {
     console.log("[Finish Card] View records clicked")
+    setIsFlowFinished(true) // 标记流程完成
     // TODO: 跳转到提取记录页面
     window.open("/records", "_blank")
   }
@@ -408,17 +454,25 @@ export default function ChatLayout({ user }: ChatLayoutProps) {
   // 继续对话
   const handleContinueChat = () => {
     console.log("[Finish Card] Continue chat clicked")
+    setIsFlowFinished(true) // 标记流程完成
     // 不做任何操作，用户可以继续输入
   }
 
   // 结束对话并评分
   const handleEndChat = (rating: number) => {
     console.log("[Finish Card] End chat with rating:", rating)
+    setIsFlowFinished(true) // 标记流程完成
     // TODO: 发送评分到后端
     // 可以在这里添加保存评分的 API 调用
   }
 
   const handleSendMessage = async (content: string, attachments?: File[]) => {
+    // 检测是否选择了提取类型
+    const extractTypeMatch = content.match(/我要办理(.+)提取/)
+    if (extractTypeMatch) {
+      setSelectedExtractType(extractTypeMatch[1])
+    }
+    
     const userMessageId = Date.now().toString()
     const aiMessageId = (Date.now() + 1).toString()
     
@@ -867,6 +921,9 @@ export default function ChatLayout({ user }: ChatLayoutProps) {
         onAccountQuery={handleAccountQuery}
         onExtraction={handleSendMessage}
         showQuickActions={messages.length > 1}
+        userAttributes={flowUserAttributes}
+        selectedExtractType={selectedExtractType}
+        isFlowFinished={isFlowFinished}
       />
       <ChatMain
         messages={messages}

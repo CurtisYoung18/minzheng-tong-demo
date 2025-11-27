@@ -8,11 +8,19 @@ import { PlusCircle, Clock, Trash2, LogOut, ChevronRight, ChevronLeft, Search, F
 import type { ChatSession } from "@/types/chat"
 import { motion, AnimatePresence } from "framer-motion"
 import { cn } from "@/lib/utils"
+import ExtractFlowChart from "./extract-flow-chart"
 
 interface User {
   userId: string
   name: string
   phone: string
+}
+
+interface UserAttributes {
+  is_auth: boolean
+  is_married: boolean
+  permit_extract_types: string[]
+  phase: string
 }
 
 interface ChatSidebarProps {
@@ -27,6 +35,10 @@ interface ChatSidebarProps {
   onAccountQuery?: () => void
   onExtraction?: (type: string) => void
   showQuickActions?: boolean
+  // 流程图相关 props
+  userAttributes?: UserAttributes | null
+  selectedExtractType?: string | null
+  isFlowFinished?: boolean
 }
 
 const USER_AVATAR = "https://img.icons8.com/color/96/user-male-circle--v1.png"
@@ -52,6 +64,9 @@ export default function ChatSidebar({
   onAccountQuery,
   onExtraction,
   showQuickActions = false,
+  userAttributes = null,
+  selectedExtractType = null,
+  isFlowFinished = false,
 }: ChatSidebarProps) {
   const router = useRouter()
   const [showExtractionOptions, setShowExtractionOptions] = useState(false)
@@ -183,6 +198,18 @@ export default function ChatSidebar({
                   </AnimatePresence>
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* 流程图 - 当有用户属性时显示 */}
+          {userAttributes && (
+            <div className="px-3 pb-3">
+              <ExtractFlowChart
+                userAttributes={userAttributes}
+                selectedExtractType={selectedExtractType}
+                isFinished={isFlowFinished}
+                onSelectExtractType={onExtraction}
+              />
             </div>
           )}
 
