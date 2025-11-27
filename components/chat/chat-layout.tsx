@@ -257,7 +257,7 @@ export default function ChatLayout({ user }: ChatLayoutProps) {
     }
   }, [messages.length, fetchUserAttributes])
 
-  const handleNewSession = () => {
+  const handleNewSession = async () => {
     const newSession: ChatSession = {
       id: Date.now().toString(),
       title: "新会话",
@@ -271,6 +271,19 @@ export default function ChatLayout({ user }: ChatLayoutProps) {
     setTitleGenerated(false) // Reset title generation flag for new session
     setSelectedExtractType(null) // 重置选择的提取类型
     setIsFlowFinished(false) // 重置完成状态
+    
+    // 重置用户 mock 数据到初始状态（用于演示）
+    try {
+      await fetch("/api/user/reset", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: user.userId }),
+      })
+      console.log("[v0] User attributes reset to initial state")
+    } catch (error) {
+      console.error("[v0] Failed to reset user attributes:", error)
+    }
+    
     fetchUserAttributes() // 重新获取用户属性
     setMessages([
       {

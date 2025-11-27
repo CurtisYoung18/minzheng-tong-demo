@@ -145,6 +145,104 @@ export const mockAccountInfo = [
 // 80000: 本人未手机签约 | 80001: 本人完成手机签约 | 80002: 本人已手机签约
 // 90000: 本人未银行卡签约 | 90001: 本人完成银行卡签约 | 90002: 本人已银行卡签约
 // 15000: 满足租房提取条件
+// 初始用户属性配置（用于重置）
+const INITIAL_USER_ATTRIBUTES: Record<string, {
+  city: string
+  phase: string
+  is_auth: boolean
+  is_authenticated: boolean
+  is_married: boolean
+  spouse_authorized: boolean
+  history_extract_types: string[]
+  permit_extract_types: string[]
+  can_extract: boolean
+  cannot_extract_reason: string | null
+  sms_signed: boolean
+  bank_card_signed: boolean
+  current_extract_type: string | null
+  current_type_needs_auth: boolean
+  current_type_authorized: boolean
+  extract_verified: boolean
+  extract_code_verified: boolean
+}> = {
+  "U001": {
+    city: "福州",
+    phase: "10000",
+    is_auth: false,
+    is_authenticated: true,
+    is_married: true,
+    spouse_authorized: true,
+    history_extract_types: ["租房"],
+    permit_extract_types: ["租房", "购房", "还贷"],
+    can_extract: true,
+    cannot_extract_reason: null,
+    sms_signed: true,
+    bank_card_signed: true,
+    current_extract_type: null,
+    current_type_needs_auth: false,
+    current_type_authorized: false,
+    extract_verified: false,
+    extract_code_verified: false,
+  },
+  "U002": {
+    city: "泉州",
+    phase: "70000",
+    is_auth: true,
+    is_authenticated: false,
+    is_married: false,
+    spouse_authorized: false,
+    history_extract_types: [],
+    permit_extract_types: ["租房", "购房", "还贷", "离职", "退休"],
+    can_extract: true,
+    cannot_extract_reason: null,
+    sms_signed: false,
+    bank_card_signed: false,
+    current_extract_type: null,
+    current_type_needs_auth: false,
+    current_type_authorized: false,
+    extract_verified: false,
+    extract_code_verified: false,
+  },
+  "U003": {
+    city: "厦门",
+    phase: "80000",
+    is_auth: true,
+    is_authenticated: true,
+    is_married: false,
+    spouse_authorized: false,
+    history_extract_types: ["购房"],
+    permit_extract_types: ["购房", "还贷"],
+    can_extract: true,
+    cannot_extract_reason: null,
+    sms_signed: true,
+    bank_card_signed: false,
+    current_extract_type: null,
+    current_type_needs_auth: false,
+    current_type_authorized: false,
+    extract_verified: false,
+    extract_code_verified: false,
+  },
+  "U004": {
+    city: "漳州",
+    phase: "15000",
+    is_auth: true,
+    is_authenticated: true,
+    is_married: true,
+    spouse_authorized: true,
+    history_extract_types: ["租房", "购房"],
+    permit_extract_types: ["租房", "购房", "还贷"],
+    can_extract: true,
+    cannot_extract_reason: null,
+    sms_signed: true,
+    bank_card_signed: true,
+    current_extract_type: null,
+    current_type_needs_auth: false,
+    current_type_authorized: false,
+    extract_verified: false,
+    extract_code_verified: false,
+  }
+}
+
 export const mockUserAttributes = [
   {
     user_id: "U001",
@@ -289,5 +387,18 @@ export interface MockUserAttributes {
 
 export function mockGetUserAttributes(userId: string): MockUserAttributes | null {
   return mockUserAttributes.find((a) => a.user_id === userId) || null
+}
+
+// 重置用户属性到初始状态（用于新会话开始时）
+export function resetMockUserAttributes(userId: string): boolean {
+  const userAttr = mockUserAttributes.find((a) => a.user_id === userId)
+  const initialAttr = INITIAL_USER_ATTRIBUTES[userId]
+  
+  if (userAttr && initialAttr) {
+    Object.assign(userAttr, { ...initialAttr, user_id: userId })
+    console.log(`[Mock DB] Reset user attributes for ${userId} to initial state`)
+    return true
+  }
+  return false
 }
 
