@@ -373,6 +373,9 @@ export default function ChatLayout({ user }: ChatLayoutProps) {
           )
         })
         
+        // 刷新流程图的用户属性状态
+        fetchUserAttributes()
+        
         // 自动发送用户消息
         setTimeout(() => {
           handleSendMessage("我已完成授权，请继续")
@@ -414,6 +417,9 @@ export default function ChatLayout({ user }: ChatLayoutProps) {
           console.warn("[Business Card] API returned non-OK status, but continuing flow")
         }
 
+        // 刷新流程图的用户属性状态
+        fetchUserAttributes()
+        
         // 自动发送用户消息
         handleSendMessage("我已完成手机号签约，请继续")
       } catch (error) {
@@ -453,6 +459,9 @@ export default function ChatLayout({ user }: ChatLayoutProps) {
           console.warn("[Business Card] API returned non-OK status, but continuing flow")
         }
 
+        // 刷新流程图的用户属性状态
+        fetchUserAttributes()
+        
         // 自动发送用户消息
         handleSendMessage("我已完成银行卡签约，请继续")
       } catch (error) {
