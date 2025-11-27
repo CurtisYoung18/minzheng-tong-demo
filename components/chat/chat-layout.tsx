@@ -431,8 +431,7 @@ export default function ChatLayout({ user }: ChatLayoutProps) {
   // 查看提取记录
   const handleViewRecords = () => {
     setIsFlowFinished(true) // 标记流程完成
-    // TODO: 跳转到提取记录页面
-    window.open("/records", "_blank")
+    window.location.href = "/records"
   }
 
   // 继续对话
