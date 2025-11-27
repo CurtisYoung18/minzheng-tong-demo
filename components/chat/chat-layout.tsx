@@ -543,6 +543,8 @@ export default function ChatLayout({ user }: ChatLayoutProps) {
     if (cardType === "withdrawl_auth" && action === "confirm") {
       try {
         // 更新用户 phase 为 30001（完成授权）
+        console.log(`[Business Card] Updating phase for user ${user.userId} to 30001`)
+        
         const response = await fetch("/api/user/attribute", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
@@ -553,11 +555,14 @@ export default function ChatLayout({ user }: ChatLayoutProps) {
           }),
         })
 
+        const responseData = await response.json()
+        
         if (!response.ok) {
-          throw new Error("更新用户属性失败")
+          console.error("[Business Card] API Error:", responseData)
+          console.warn("[Business Card] Continuing despite API error")
+        } else {
+          console.log("[Business Card] User phase updated to 30001", responseData)
         }
-
-        console.log("[Business Card] User phase updated to 30001")
 
         // 自动发送用户消息
         handleSendMessage("我已完成授权，请继续")
@@ -577,6 +582,8 @@ export default function ChatLayout({ user }: ChatLayoutProps) {
         const newPhase = isPhoneSign ? "80001" : "90001"
         const signType = isPhoneSign ? "手机号" : "银行卡"
         
+        console.log(`[Business Card] Updating phase for user ${user.userId} to ${newPhase}`)
+        
         const response = await fetch("/api/user/attribute", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
@@ -587,11 +594,15 @@ export default function ChatLayout({ user }: ChatLayoutProps) {
           }),
         })
 
+        const responseData = await response.json()
+        
         if (!response.ok) {
-          throw new Error("更新用户属性失败")
+          console.error("[Business Card] API Error:", responseData)
+          // 不阻止流程继续，只记录错误
+          console.warn("[Business Card] Continuing despite API error")
+        } else {
+          console.log(`[Business Card] User phase updated to ${newPhase}`, responseData)
         }
-
-        console.log(`[Business Card] User phase updated to ${newPhase}`)
 
         // 自动发送用户消息
         handleSendMessage(`我已完成${signType}签约，请继续`)

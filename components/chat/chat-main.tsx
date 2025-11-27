@@ -87,16 +87,38 @@ export default function ChatMain({
   }, [showAttachMenu])
 
   // Auto-scroll with smooth animation (throttled)
-  const lastScrollTime = useRef(0)
-  useEffect(() => {
-    const now = Date.now()
-    if (now - lastScrollTime.current < 100) return // Throttle to 100ms
-    lastScrollTime.current = now
-    
+  // 滚动到底部
+  const scrollToBottom = useCallback((smooth = true) => {
     if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: "smooth", block: "end" })
+      messagesEndRef.current.scrollIntoView({ 
+        behavior: smooth ? "smooth" : "instant", 
+        block: "end" 
+      })
     }
-  }, [messages, isLoading])
+  }, [])
+
+  // 消息变化时滚动到底部
+  useEffect(() => {
+    // 使用 requestAnimationFrame 确保 DOM 更新后再滚动
+    const frame = requestAnimationFrame(() => {
+      scrollToBottom(true)
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [messages, isLoading, scrollToBottom])
+
+  // 额外的延迟滚动，确保卡片动画完成后仍然可见
+  useEffect(() => {
+    if (messages.length > 0) {
+      const lastMessage = messages[messages.length - 1]
+      // 如果最后一条消息是 AI 的并且有卡片，额外延迟滚动
+      if (lastMessage.role === "assistant" && lastMessage.llmCardType) {
+        const timer = setTimeout(() => {
+          scrollToBottom(true)
+        }, 500) // 等待卡片动画
+        return () => clearTimeout(timer)
+      }
+    }
+  }, [messages, scrollToBottom])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
