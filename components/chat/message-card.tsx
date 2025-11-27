@@ -8,17 +8,56 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
 import { Download, ChevronDown, ChevronUp, Sparkles, Search } from "lucide-react"
-import type { Message } from "@/types/chat"
+import type { Message, LLMCardType, LLMResponse } from "@/types/chat"
 import ThinkingProcess from "./thinking-process"
 import AccountDetailsCard from "./account-details-card"
+import LLMCard from "./llm-card"
 
 interface MessageCardProps {
   message: Message
   userId: string
 }
 
+// 解析 LLM 返回的 JSON 格式内容
+function parseLLMResponse(content: string): LLMResponse | null {
+  if (!content) return null
+  
+  // 尝试解析 JSON 格式
+  const trimmed = content.trim()
+  if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+    try {
+      const parsed = JSON.parse(trimmed)
+      if ('content' in parsed) {
+        return {
+          card_type: parsed.card_type || null,
+          card_message: parsed.card_message || '',
+          content: parsed.content || ''
+        }
+      }
+    } catch {
+      // 不是有效的 JSON，返回 null
+    }
+  }
+  
+  return null
+}
+
 export default function MessageCard({ message, userId }: MessageCardProps) {
   const [expanded, setExpanded] = useState(true)
+  
+  // 解析消息内容，检查是否为 LLM 结构化响应
+  const parsedResponse = useMemo(() => {
+    // 优先使用消息中已解析的字段
+    if (message.llmCardType !== undefined) {
+      return {
+        card_type: message.llmCardType,
+        card_message: message.llmCardMessage || '',
+        content: message.content
+      } as LLMResponse
+    }
+    // 尝试从 content 中解析 JSON
+    return parseLLMResponse(message.content)
+  }, [message.content, message.llmCardType, message.llmCardMessage])
 
   // Show querying animation for data queries (e.g., account info)
   if (message.isQuerying && !message.accountInfo && !message.content) {
@@ -173,9 +212,14 @@ export default function MessageCard({ message, userId }: MessageCardProps) {
     )
   }
 
-  // Regular text message with thinking process
+  // 获取要显示的内容（如果是 LLM 结构化响应，使用解析后的 content）
+  const displayContent = parsedResponse ? parsedResponse.content : message.content
+  const llmCardType = parsedResponse?.card_type
+  const llmCardMessage = parsedResponse?.card_message
+
+  // Regular text message with thinking process and LLM card
   return (
-    <div className="max-w-full space-y-2">
+    <div className="max-w-full space-y-3">
       {/* Thinking Process Component */}
       {message.thinking && (
         <ThinkingProcess
@@ -185,8 +229,17 @@ export default function MessageCard({ message, userId }: MessageCardProps) {
         />
       )}
       
+      {/* LLM Card (if card_type is present) */}
+      {llmCardType && llmCardMessage && (
+        <LLMCard
+          type={llmCardType}
+          message={llmCardMessage}
+          className="max-w-sm"
+        />
+      )}
+      
       {/* Main Content with Markdown and HTML rendering */}
-      {message.content && (
+      {displayContent && (
         <div className="bg-secondary/80 px-4 py-3 rounded-2xl rounded-tl-sm">
           <div className="prose prose-sm dark:prose-invert max-w-none text-foreground leading-relaxed
             prose-p:my-2 prose-p:leading-relaxed
@@ -205,7 +258,7 @@ export default function MessageCard({ message, userId }: MessageCardProps) {
               remarkPlugins={[remarkGfm]} 
               rehypePlugins={[rehypeRaw]}
             >
-              {message.content}
+              {displayContent}
             </ReactMarkdown>
           </div>
         </div>

@@ -1,3 +1,12 @@
+// LLM 返回的结构化响应格式
+export type LLMCardType = "warning" | "success" | "info" | "error" | null
+
+export interface LLMResponse {
+  card_type?: LLMCardType
+  card_message?: string
+  content: string
+}
+
 export interface Message {
   id: string
   role: "user" | "assistant"
@@ -9,6 +18,9 @@ export interface Message {
   accountInfo?: AccountInfo // Account details for account query
   isThinking?: boolean // Show thinking animation before content arrives
   isQuerying?: boolean // Show "正在为您查询信息" animation for data queries
+  // LLM 结构化卡片
+  llmCardType?: LLMCardType
+  llmCardMessage?: string
 }
 
 export interface AccountInfo {
