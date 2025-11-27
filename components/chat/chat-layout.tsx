@@ -118,8 +118,6 @@ export default function ChatLayout({ user }: ChatLayoutProps) {
       .map((m) => m.content)
       .join("\n\n")
 
-    console.log("[Title] Generating title with user messages:", conversationHistory.substring(0, 200))
-
     try {
       const response = await fetch("/api/chat/title", {
         method: "POST",
@@ -137,7 +135,6 @@ export default function ChatLayout({ user }: ChatLayoutProps) {
 
       const data = await response.json()
       if (data.title) {
-        console.log("[Title] Generated title:", data.title)
         setSessions((prev) =>
           prev.map((s) => (s.id === sessionId ? { ...s, title: data.title } : s))
         )
@@ -169,11 +166,8 @@ export default function ChatLayout({ user }: ChatLayoutProps) {
              (m.content?.trim() || m.accountInfo)
     )
     
-    console.log("[Title] Checking title generation - userMessages:", userMessages.length, "assistantMessages:", assistantMessages.length)
-    
     // Check if we have at least 3 user messages and 3 assistant responses
     if (userMessages.length >= 3 && assistantMessages.length >= 3) {
-      console.log("[Title] Triggering AI title generation after 3 rounds")
       titleGenerationAttempted.current = true
       generateSessionTitle(messages, activeSessionId)
     } else if (userMessages.length >= 1 && assistantMessages.length >= 1) {
@@ -182,7 +176,6 @@ export default function ChatLayout({ user }: ChatLayoutProps) {
       if (currentSession?.title === "新会话") {
         const firstUserMessage = userMessages[0].content
         const title = firstUserMessage.substring(0, 15) + (firstUserMessage.length > 15 ? "..." : "")
-        console.log("[Title] Setting initial title from first message:", title)
         setSessions((prev) =>
           prev.map((s) => (s.id === activeSessionId ? { ...s, title } : s))
         )
@@ -200,7 +193,6 @@ export default function ChatLayout({ user }: ChatLayoutProps) {
     if (conversationId) return conversationId
 
     try {
-      console.log("[v0] Initializing conversation via backend API...")
       const response = await fetch("/api/chat/conversation", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -213,7 +205,6 @@ export default function ChatLayout({ user }: ChatLayoutProps) {
       }
 
       const data = await response.json()
-      console.log("[v0] Conversation created:", data.conversationId)
       setConversationId(data.conversationId)
       setConnectionError(null)
       return data.conversationId
@@ -279,7 +270,6 @@ export default function ChatLayout({ user }: ChatLayoutProps) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId: user.userId }),
       })
-      console.log("[v0] User attributes reset to initial state")
     } catch (error) {
       console.error("[v0] Failed to reset user attributes:", error)
     }
@@ -321,12 +311,10 @@ export default function ChatLayout({ user }: ChatLayoutProps) {
 
   // 处理业务卡片操作
   const handleBusinessCardAction = async (cardType: string, action: string, extraData?: { message?: string }) => {
-    console.log(`[Business Card] Type: ${cardType}, Action: ${action}`, extraData)
     
     if (cardType === "auth" && action === "confirm") {
       try {
         // 更新用户 is_auth 为 true（完成授权）
-        console.log(`[Business Card] Updating is_auth for user ${user.userId} to true`)
         
         // 1. 更新本地 mock 数据库
         const response = await fetch("/api/user/attribute", {
@@ -350,24 +338,13 @@ export default function ChatLayout({ user }: ChatLayoutProps) {
           }),
         })
         
-        if (gptbotsResponse.ok) {
-          console.log("[Business Card] GPTBots is_auth updated successfully")
-        } else {
-          console.warn("[Business Card] Failed to update GPTBots is_auth")
-        }
 
         const responseText = await response.text()
         let responseData = {}
         try {
           responseData = responseText ? JSON.parse(responseText) : {}
         } catch {
-          console.error("[Business Card] Failed to parse response:", responseText)
-        }
-        
-        console.log(`[Business Card] API Response - Status: ${response.status}, Data:`, responseData)
-        
-        if (!response.ok) {
-          console.warn("[Business Card] API returned non-OK status, but continuing flow")
+          // Ignore parse error
         }
 
         // 获取用户可用的提取类型
@@ -375,7 +352,6 @@ export default function ChatLayout({ user }: ChatLayoutProps) {
         const attrData = await attrResponse.json()
         const permitExtractTypes = attrData?.data?.permit_extract_types || []
         
-        console.log(`[Business Card] User permit_extract_types:`, permitExtractTypes)
 
         // 找到包含 auth 卡片的消息，更新它显示可用的提取类型
         setMessages((prev) => {
@@ -407,33 +383,15 @@ export default function ChatLayout({ user }: ChatLayoutProps) {
     if (cardType === "sms_sign" && action === "confirm") {
       try {
         // 手机签约: 70000 → 70001
-        const newPhase = "70001"
-        
-        console.log(`[Business Card] Updating phase for user ${user.userId} to ${newPhase}`)
-        
-        const response = await fetch("/api/user/attribute", {
+        await fetch("/api/user/attribute", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             userId: user.userId,
             attributeName: "phase",
-            value: newPhase,
+            value: "70001",
           }),
         })
-
-        const responseText = await response.text()
-        let responseData = {}
-        try {
-          responseData = responseText ? JSON.parse(responseText) : {}
-        } catch {
-          console.error("[Business Card] Failed to parse response:", responseText)
-        }
-        
-        console.log(`[Business Card] API Response - Status: ${response.status}, Data:`, responseData)
-        
-        if (!response.ok) {
-          console.warn("[Business Card] API returned non-OK status, but continuing flow")
-        }
 
         // 刷新流程图的用户属性状态
         fetchUserAttributes()
@@ -441,7 +399,7 @@ export default function ChatLayout({ user }: ChatLayoutProps) {
         // 自动发送用户消息
         handleSendMessage("我已完成手机号签约，请继续")
       } catch (error) {
-        console.error("[Business Card] Error:", error)
+        console.error("[Business Card] sms_sign error:", error)
       }
     }
     
@@ -449,33 +407,15 @@ export default function ChatLayout({ user }: ChatLayoutProps) {
     if (cardType === "bank_sign" && action === "confirm") {
       try {
         // 银行卡签约: 80000 → 80001
-        const newPhase = "80001"
-        
-        console.log(`[Business Card] Updating phase for user ${user.userId} to ${newPhase}`)
-        
-        const response = await fetch("/api/user/attribute", {
+        await fetch("/api/user/attribute", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             userId: user.userId,
             attributeName: "phase",
-            value: newPhase,
+            value: "80001",
           }),
         })
-
-        const responseText = await response.text()
-        let responseData = {}
-        try {
-          responseData = responseText ? JSON.parse(responseText) : {}
-              } catch {
-          console.error("[Business Card] Failed to parse response:", responseText)
-        }
-        
-        console.log(`[Business Card] API Response - Status: ${response.status}, Data:`, responseData)
-        
-        if (!response.ok) {
-          console.warn("[Business Card] API returned non-OK status, but continuing flow")
-        }
 
         // 刷新流程图的用户属性状态
         fetchUserAttributes()
@@ -483,14 +423,13 @@ export default function ChatLayout({ user }: ChatLayoutProps) {
         // 自动发送用户消息
         handleSendMessage("我已完成银行卡签约，请继续")
       } catch (error) {
-        console.error("[Business Card] Error:", error)
+        console.error("[Business Card] bank_sign error:", error)
       }
     }
   }
 
   // 查看提取记录
   const handleViewRecords = () => {
-    console.log("[Finish Card] View records clicked")
     setIsFlowFinished(true) // 标记流程完成
     // TODO: 跳转到提取记录页面
     window.open("/records", "_blank")
@@ -498,14 +437,12 @@ export default function ChatLayout({ user }: ChatLayoutProps) {
 
   // 继续对话
   const handleContinueChat = () => {
-    console.log("[Finish Card] Continue chat clicked")
     setIsFlowFinished(true) // 标记流程完成
     // 不做任何操作，用户可以继续输入
   }
 
   // 结束对话并评分
   const handleEndChat = (rating: number) => {
-    console.log("[Finish Card] End chat with rating:", rating)
     setIsFlowFinished(true) // 标记流程完成
     // TODO: 发送评分到后端
     // 可以在这里添加保存评分的 API 调用
@@ -595,7 +532,6 @@ export default function ChatLayout({ user }: ChatLayoutProps) {
         }
       }
 
-      console.log("[v0] Sending message via backend API...")
       const response = await fetch("/api/chat/message", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -662,7 +598,6 @@ export default function ChatLayout({ user }: ChatLayoutProps) {
         if (isJsonMode === null && jsonBuffer.trim().length > 0) {
           isJsonMode = jsonBuffer.trim().startsWith('{')
           if (isJsonMode) {
-            console.log("[v0] JSON mode detected - will show thinking until content extracted")
           }
         }
         
@@ -810,7 +745,6 @@ export default function ChatLayout({ user }: ChatLayoutProps) {
             if (line.startsWith("data: ")) {
               try {
                 const event = JSON.parse(line.slice(6))
-                console.log("[v0] Stream event:", event.code, event.message)
 
                 // Handle different event types per API docs
                 if (event.code === 3 && event.message === "Text") {
@@ -822,7 +756,6 @@ export default function ChatLayout({ user }: ChatLayoutProps) {
                 } else if (event.code === 10 && event.message === "FlowOutput") {
                   // FlowOutput often contains the full/partial content that might duplicate what received in Text events.
                   // We intentionally ignore it to prevent duplication, relying on Text events for streaming.
-                  console.log("[v0] Skipping FlowOutput to prevent duplication")
                 } else if (event.code === 39 && event.message === "Audio") {
                   // Audio transcript
                   if (event.data?.transcript) {
@@ -863,13 +796,10 @@ export default function ChatLayout({ user }: ChatLayoutProps) {
                   
                   // Force final update with JSON parsing
                   updateUI(true, true)
-                  console.log("[v0] Stream ended")
                 } else if (event.code === 11 && event.message === "MessageInfo") {
                   // MessageInfo - log for debugging
-                  console.log("[v0] MessageInfo:", event.data)
                 } else if (event.code === 4 && event.message === "Cost") {
                   // Cost information - log for debugging
-                  console.log("[v0] Cost:", event.data)
                 } else if (event.code >= 20000 || event.code >= 40000) {
                   // Error codes from API
                   console.error("[v0] API Error:", event.code, event.message)
@@ -915,12 +845,10 @@ export default function ChatLayout({ user }: ChatLayoutProps) {
       // 检查是否需要获取公积金详情
       const finalLlmResponse = isJsonMode ? parseLLMJsonResponse(jsonBuffer.trim()) : null
       if (finalLlmResponse?.card_type === "gjj_details") {
-        console.log("[v0] Detected gjj_details card, fetching account info...")
         try {
           const accountResponse = await fetch(`/api/account/info?userId=${user.userId}`)
           if (accountResponse.ok) {
             const { data: accountInfo } = await accountResponse.json()
-            console.log("[v0] Account info fetched for gjj_details card")
             
             // 更新当前消息，添加 accountInfo 展示账户卡片
             setMessages((prev) =>
