@@ -160,7 +160,9 @@ export default function ChatMain({
 
       {/* Messages */}
       <ScrollArea className="flex-1 min-h-0 p-6" ref={scrollRef}>
-        <div className="max-w-4xl ml-4 md:ml-8 lg:ml-12 space-y-6 pb-4 relative">
+        <div className={`max-w-4xl space-y-6 pb-4 relative transition-all duration-300 ${
+          sidebarOpen ? "ml-4 md:ml-8 lg:ml-12" : "mx-auto"
+        }`}>
           {/* Quick Actions - shown when only welcome message exists */}
           {showQuickActions && messages.length <= 1 && (
             <QuickActions
@@ -210,7 +212,9 @@ export default function ChatMain({
       {/* Attachments Preview */}
       {attachments.length > 0 && (
         <div className="px-6 py-2 border-t border-border">
-          <div className="max-w-4xl mx-auto flex flex-wrap gap-2">
+          <div className={`max-w-4xl flex flex-wrap gap-2 transition-all duration-300 ${
+            sidebarOpen ? "ml-4 md:ml-8 lg:ml-12" : "mx-auto"
+          }`}>
             {attachments.map((file, index) => (
               <div key={index} className="flex items-center gap-2 bg-muted px-3 py-1.5 rounded-full text-sm">
                 {getFileIcon(file)}
@@ -226,7 +230,9 @@ export default function ChatMain({
 
       {/* Input */}
       <div className="border-t border-border p-4 shrink-0">
-        <form onSubmit={handleSubmit} className="max-w-4xl mx-auto relative">
+        <form onSubmit={handleSubmit} className={`max-w-4xl relative transition-all duration-300 ${
+          sidebarOpen ? "ml-4 md:ml-8 lg:ml-12 mr-4" : "mx-auto"
+        }`}>
           {/* Attach Menu - positioned outside the input container to avoid clipping */}
           <AnimatePresence>
             {showAttachMenu && (
