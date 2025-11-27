@@ -106,13 +106,28 @@ export default function MessageCard({
     )
   }
 
-  // Check if message has account info
+  // Check if message has account info - render card and content together
   if (message.accountInfo) {
     return (
-      <AccountDetailsCard
-        accountInfo={message.accountInfo}
-        className="w-full max-w-2xl"
-      />
+      <div className="space-y-3">
+        <AccountDetailsCard
+          accountInfo={message.accountInfo}
+          className="w-full max-w-2xl"
+        />
+        {/* Render AI's content summary below the card */}
+        {displayContent && (
+          <div className="bg-secondary/80 px-4 py-3 rounded-2xl rounded-tl-sm">
+            <div className="prose prose-sm dark:prose-invert max-w-none text-foreground leading-relaxed">
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm]}
+                rehypePlugins={[rehypeRaw]}
+              >
+                {displayContent}
+              </ReactMarkdown>
+            </div>
+          </div>
+        )}
+      </div>
     )
   }
 
