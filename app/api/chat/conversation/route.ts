@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { createConversation } from "@/lib/gptbots"
+import { createConversation, updateUserProperties, type PropertyValue } from "@/lib/gptbots"
+import { getUserAttributes } from "@/lib/db"
 
 export async function POST(request: NextRequest) {
   try {
@@ -20,9 +21,33 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Create conversation
     const conversationId = await createConversation(userId)
-
     console.log("[v0] API route - Conversation created:", conversationId)
+
+    // Fetch user attributes from database and sync to GPTBots
+    try {
+      const userAttributes = await getUserAttributes(userId)
+      
+      if (userAttributes) {
+        console.log("[v0] User attributes found:", userAttributes)
+        
+        // Build property values array for GPTBots
+        const propertyValues: PropertyValue[] = [
+          { property_name: "city", value: userAttributes.city },
+          { property_name: "phase", value: userAttributes.phase },
+        ]
+
+        // Sync user attributes to GPTBots
+        const syncResult = await updateUserProperties(userId, propertyValues)
+        console.log("[v0] User properties sync result:", syncResult)
+      } else {
+        console.log("[v0] No user attributes found for userId:", userId)
+      }
+    } catch (attrError) {
+      // Don't fail the whole request if attribute sync fails
+      console.error("[v0] Failed to sync user attributes:", attrError)
+    }
 
     return NextResponse.json({ conversationId })
   } catch (error) {

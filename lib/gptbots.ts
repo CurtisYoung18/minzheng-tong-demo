@@ -260,6 +260,47 @@ export async function createConversation(userId: string): Promise<string> {
   }
 }
 
+// Update user properties in GPTBots
+export interface PropertyValue {
+  property_name: string
+  value: unknown
+}
+
+export async function updateUserProperties(
+  userId: string,
+  propertyValues: PropertyValue[]
+): Promise<boolean> {
+  const url = `${GPTBOTS_BASE_URL}/v1/property/update`
+  console.log("[v0] Updating user properties for:", userId)
+  console.log("[v0] Properties:", JSON.stringify(propertyValues))
+
+  try {
+    const response = await fetchWithSSLBypass(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${GPTBOTS_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        user_id: userId,
+        property_values: propertyValues,
+      }),
+    })
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error("[v0] Update properties failed:", response.status, errorText)
+      return false
+    }
+
+    console.log("[v0] User properties updated successfully")
+    return true
+  } catch (error) {
+    console.error("[v0] Update properties error:", error)
+    return false
+  }
+}
+
 // Send message with streaming support
 export async function sendMessageStreaming(
   conversationId: string,
