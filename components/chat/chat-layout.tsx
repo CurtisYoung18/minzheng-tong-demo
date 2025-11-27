@@ -850,11 +850,16 @@ export default function ChatLayout({ user }: ChatLayoutProps) {
           if (accountResponse.ok) {
             const { data: accountInfo } = await accountResponse.json()
             
-            // 更新当前消息，添加 accountInfo 展示账户卡片
+            // 更新当前消息，添加 accountInfo 展示账户卡片，同时保留 AI 返回的 content
             setMessages((prev) =>
               prev.map((m) =>
                 m.id === aiMessageId
-                  ? { ...m, accountInfo, llmCardType: undefined, content: "" } // 清除 content 和 llmCardType，让 accountInfo 卡片优先显示
+                  ? { 
+                      ...m, 
+                      accountInfo, 
+                      llmCardType: undefined,
+                      content: finalLlmResponse.content || m.content // 保留 AI 返回的 content
+                    }
                   : m
               )
             )
