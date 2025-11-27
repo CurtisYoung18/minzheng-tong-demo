@@ -56,7 +56,7 @@ export default function ExtractFlowChart({
   className
 }: ExtractFlowChartProps) {
   const [isCollapsed, setIsCollapsed] = useState(false)
-  const [expandedSteps, setExpandedSteps] = useState<Set<string>>(new Set(["signing"]))
+  const [expandedSteps, setExpandedSteps] = useState<Set<string>>(new Set()) // 签约状态默认收起
 
   if (!userAttributes) {
     return null
@@ -170,7 +170,7 @@ export default function ExtractFlowChart({
       icon: <Baby className="h-4 w-4" />,
       isActive: false,
       isCompleted: isMultiChildChecked,
-      subLabel: "满足"
+      subLabel: isMultiChildChecked ? "满足" : undefined // 未完成时不显示
     },
     {
       id: "deposit",
@@ -178,7 +178,7 @@ export default function ExtractFlowChart({
       icon: <Wallet className="h-4 w-4" />,
       isActive: false,
       isCompleted: isDepositChecked,
-      subLabel: "满足"
+      subLabel: isDepositChecked ? "满足" : undefined // 未完成时不显示
     },
     {
       id: "property",
@@ -186,6 +186,7 @@ export default function ExtractFlowChart({
       icon: <Building className="h-4 w-4" />,
       isActive: false,
       isCompleted: isPropertyChecked,
+      subLabel: isPropertyChecked ? "满足" : undefined // 未完成时不显示
     },
     {
       id: "loan",
@@ -193,6 +194,7 @@ export default function ExtractFlowChart({
       icon: <Landmark className="h-4 w-4" />,
       isActive: false,
       isCompleted: isLoanChecked,
+      subLabel: isLoanChecked ? "满足" : undefined // 未完成时不显示
     },
     {
       id: "extract_details",

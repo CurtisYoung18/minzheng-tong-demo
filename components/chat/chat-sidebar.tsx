@@ -109,7 +109,7 @@ export default function ChatSidebar({
           </div>
 
           {/* New Chat Button */}
-          <div className="px-3 pb-4">
+          <div className="px-3 pb-4 shrink-0">
             <Button
               onClick={onNewSession}
               className="w-full bg-primary hover:bg-primary/90 text-primary-foreground gap-2 h-10 rounded-full text-sm font-medium"
@@ -119,133 +119,136 @@ export default function ChatSidebar({
             </Button>
           </div>
 
-          {/* Quick Actions Section - Shows after first message */}
-          {showQuickActions && onAccountQuery && onExtraction && (
-            <div className="px-3 pb-3">
-              <div className="bg-gradient-to-br from-orange-50/80 to-amber-50/80 dark:from-orange-950/30 dark:to-amber-950/30 rounded-xl border border-orange-200/50 dark:border-orange-800/30 overflow-hidden">
-                <div className="px-3 py-2 border-b border-orange-200/30 dark:border-orange-800/30 bg-gradient-to-r from-orange-100/50 to-amber-100/50 dark:from-orange-900/20 dark:to-amber-900/20">
-                  <h4 className="text-xs font-semibold text-orange-900 dark:text-orange-100 flex items-center gap-1.5">
-                    <span>🏠</span>
-                    快捷服务
-                  </h4>
-                </div>
-                <div className="p-2 space-y-1.5">
-                  {/* Account Query Button */}
-                  <button
-                    onClick={onAccountQuery}
-                    className="w-full flex items-center gap-2 p-2 bg-white/60 dark:bg-gray-800/40 rounded-lg border border-orange-200/30 dark:border-orange-700/20 hover:border-orange-400 dark:hover:border-orange-600 hover:bg-white dark:hover:bg-gray-800/60 transition-all group text-left"
-                  >
-                    <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-orange-400 to-amber-500 flex items-center justify-center shrink-0">
-                      <Search className="h-3.5 w-3.5 text-white" />
+          {/* Scrollable content area */}
+          <ScrollArea className="flex-1">
+            <div className="space-y-3">
+              {/* Quick Actions Section - Shows after first message */}
+              {showQuickActions && onAccountQuery && onExtraction && (
+                <div className="px-3">
+                  <div className="bg-gradient-to-br from-orange-50/80 to-amber-50/80 dark:from-orange-950/30 dark:to-amber-950/30 rounded-xl border border-orange-200/50 dark:border-orange-800/30 overflow-hidden">
+                    <div className="px-3 py-2 border-b border-orange-200/30 dark:border-orange-800/30 bg-gradient-to-r from-orange-100/50 to-amber-100/50 dark:from-orange-900/20 dark:to-amber-900/20">
+                      <h4 className="text-xs font-semibold text-orange-900 dark:text-orange-100 flex items-center gap-1.5">
+                        <span>🏠</span>
+                        快捷服务
+                      </h4>
                     </div>
-                    <span className="text-xs font-medium text-gray-700 dark:text-gray-300 truncate">账户查询</span>
-                    <ChevronRight className="h-3.5 w-3.5 text-gray-400 group-hover:text-orange-500 ml-auto shrink-0" />
-                  </button>
-
-                  {/* Extraction Button */}
-                  <button
-                    onClick={() => setShowExtractionOptions(!showExtractionOptions)}
-                    className={cn(
-                      "w-full flex items-center gap-2 p-2 bg-white/60 dark:bg-gray-800/40 rounded-lg border transition-all group text-left",
-                      showExtractionOptions
-                        ? "border-blue-400 dark:border-blue-600"
-                        : "border-orange-200/30 dark:border-orange-700/20 hover:border-blue-400 dark:hover:border-blue-600 hover:bg-white dark:hover:bg-gray-800/60"
-                    )}
-                  >
-                    <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center shrink-0">
-                      <FileText className="h-3.5 w-3.5 text-white" />
-                    </div>
-                    <span className="text-xs font-medium text-gray-700 dark:text-gray-300 truncate">公积金提取</span>
-                    <motion.div
-                      animate={{ rotate: showExtractionOptions ? 90 : 0 }}
-                      transition={{ duration: 0.2 }}
-                      className="ml-auto shrink-0"
-                    >
-                      <ChevronRight className="h-3.5 w-3.5 text-gray-400 group-hover:text-blue-500" />
-                    </motion.div>
-                  </button>
-
-                  {/* Extraction Options */}
-                  <AnimatePresence>
-                    {showExtractionOptions && (
-                      <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: "auto" }}
-                        exit={{ opacity: 0, height: 0 }}
-                        transition={{ duration: 0.2 }}
-                        className="overflow-hidden"
+                    <div className="p-2 space-y-1.5">
+                      {/* Account Query Button */}
+                      <button
+                        onClick={onAccountQuery}
+                        className="w-full flex items-center gap-2 p-2 bg-white/60 dark:bg-gray-800/40 rounded-lg border border-orange-200/30 dark:border-orange-700/20 hover:border-orange-400 dark:hover:border-orange-600 hover:bg-white dark:hover:bg-gray-800/60 transition-all group text-left"
                       >
-                        <div className="pt-1 flex flex-wrap gap-1">
-                          {extractionOptions.map((option, index) => (
-                            <motion.button
-                              key={option.id}
-                              initial={{ opacity: 0, scale: 0.9 }}
-                              animate={{ opacity: 1, scale: 1 }}
-                              transition={{ delay: index * 0.03, duration: 0.15 }}
-                              onClick={() => {
-                                onExtraction(option.message)
-                                setShowExtractionOptions(false)
-                              }}
-                              className="flex items-center gap-1 px-2 py-1 bg-white dark:bg-gray-800 rounded-full border border-gray-200 dark:border-gray-700 hover:border-blue-400 dark:hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/30 text-xs text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-300 transition-all"
-                            >
-                              <option.icon className="h-3 w-3" />
-                              {option.label}
-                            </motion.button>
-                          ))}
+                        <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-orange-400 to-amber-500 flex items-center justify-center shrink-0">
+                          <Search className="h-3.5 w-3.5 text-white" />
                         </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
+                        <span className="text-xs font-medium text-gray-700 dark:text-gray-300 truncate">账户查询</span>
+                        <ChevronRight className="h-3.5 w-3.5 text-gray-400 group-hover:text-orange-500 ml-auto shrink-0" />
+                      </button>
+
+                      {/* Extraction Button */}
+                      <button
+                        onClick={() => setShowExtractionOptions(!showExtractionOptions)}
+                        className={cn(
+                          "w-full flex items-center gap-2 p-2 bg-white/60 dark:bg-gray-800/40 rounded-lg border transition-all group text-left",
+                          showExtractionOptions
+                            ? "border-blue-400 dark:border-blue-600"
+                            : "border-orange-200/30 dark:border-orange-700/20 hover:border-blue-400 dark:hover:border-blue-600 hover:bg-white dark:hover:bg-gray-800/60"
+                        )}
+                      >
+                        <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center shrink-0">
+                          <FileText className="h-3.5 w-3.5 text-white" />
+                        </div>
+                        <span className="text-xs font-medium text-gray-700 dark:text-gray-300 truncate">公积金提取</span>
+                        <motion.div
+                          animate={{ rotate: showExtractionOptions ? 90 : 0 }}
+                          transition={{ duration: 0.2 }}
+                          className="ml-auto shrink-0"
+                        >
+                          <ChevronRight className="h-3.5 w-3.5 text-gray-400 group-hover:text-blue-500" />
+                        </motion.div>
+                      </button>
+
+                      {/* Extraction Options */}
+                      <AnimatePresence>
+                        {showExtractionOptions && (
+                          <motion.div
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: "auto" }}
+                            exit={{ opacity: 0, height: 0 }}
+                            transition={{ duration: 0.2 }}
+                            className="overflow-hidden"
+                          >
+                            <div className="pt-1 flex flex-wrap gap-1">
+                              {extractionOptions.map((option, index) => (
+                                <motion.button
+                                  key={option.id}
+                                  initial={{ opacity: 0, scale: 0.9 }}
+                                  animate={{ opacity: 1, scale: 1 }}
+                                  transition={{ delay: index * 0.03, duration: 0.15 }}
+                                  onClick={() => {
+                                    onExtraction(option.message)
+                                    setShowExtractionOptions(false)
+                                  }}
+                                  className="flex items-center gap-1 px-2 py-1 bg-white dark:bg-gray-800 rounded-full border border-gray-200 dark:border-gray-700 hover:border-blue-400 dark:hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/30 text-xs text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-300 transition-all"
+                                >
+                                  <option.icon className="h-3 w-3" />
+                                  {option.label}
+                                </motion.button>
+                              ))}
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  </div>
                 </div>
+              )}
+
+              {/* 流程图 - 当有用户属性时显示 */}
+              {userAttributes && (
+                <div className="px-3">
+                  <ExtractFlowChart
+                    userAttributes={userAttributes}
+                    selectedExtractType={selectedExtractType}
+                    isFinished={isFlowFinished}
+                    onSelectExtractType={onExtraction}
+                  />
+                </div>
+              )}
+
+              {/* Recent Sessions Header */}
+              <div className="px-3 py-2 flex items-center gap-2 text-sm text-muted-foreground">
+                <Clock className="h-4 w-4" />
+                <span>最近导办记录</span>
               </div>
-            </div>
-          )}
 
-          {/* 流程图 - 当有用户属性时显示 */}
-          {userAttributes && (
-            <div className="px-3 pb-3">
-              <ExtractFlowChart
-                userAttributes={userAttributes}
-                selectedExtractType={selectedExtractType}
-                isFinished={isFlowFinished}
-                onSelectExtractType={onExtraction}
-              />
-            </div>
-          )}
-
-          {/* Recent Sessions Header */}
-          <div className="px-3 py-2 flex items-center gap-2 text-sm text-muted-foreground">
-            <Clock className="h-4 w-4" />
-            <span>最近导办记录</span>
-          </div>
-
-          {/* Sessions List */}
-          <ScrollArea className="flex-1 px-3">
-            <div className="space-y-1">
-              {sessions.map((session) => (
-                <div
-                  key={session.id}
-                  className={`group flex items-center gap-2 p-2.5 rounded-lg cursor-pointer transition-colors ${
-                    activeSessionId === session.id
-                      ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                      : "hover:bg-sidebar-accent/50"
-                  }`}
-                  onClick={() => onSelectSession(session.id)}
-                >
-                  <span className="flex-1 truncate text-sm">{session.title}</span>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      onDeleteSession(session.id)
-                    }}
+              {/* Sessions List */}
+              <div className="px-3 space-y-1">
+                {sessions.map((session) => (
+                  <div
+                    key={session.id}
+                    className={`group flex items-center gap-2 p-2.5 rounded-lg cursor-pointer transition-colors ${
+                      activeSessionId === session.id
+                        ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                        : "hover:bg-sidebar-accent/50"
+                    }`}
+                    onClick={() => onSelectSession(session.id)}
                   >
-                    <Trash2 className="h-3 w-3" />
-                  </Button>
-                </div>
-              ))}
+                    <span className="flex-1 truncate text-sm">{session.title}</span>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onDeleteSession(session.id)
+                      }}
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
             </div>
           </ScrollArea>
 
