@@ -409,7 +409,7 @@ export default function ChatLayout({ user }: ChatLayoutProps) {
     if (cardType === "sms_sign" && action === "confirm") {
       try {
         // 手机签约完成: 1015 → 1016 (API 会自动跳转到 1018)
-        await fetch("/api/user/attribute", {
+        const response = await fetch("/api/user/attribute", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -418,6 +418,21 @@ export default function ChatLayout({ user }: ChatLayoutProps) {
             value: "1016",
           }),
         })
+        const result = await response.json()
+        const newPhase = result.newValue || "1018"
+        console.log("[手机签约] 本地 phase 更新:", newPhase)
+
+        // 同步 phase 到 GPTBots
+        await fetch("/api/user/gptbots-attribute", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId: user.userId,
+            attributeName: "phase",
+            value: newPhase,
+          }),
+        })
+        console.log("[手机签约] GPTBots phase 已同步:", newPhase)
 
         // 刷新流程图的用户属性状态
         fetchUserAttributes()
@@ -431,9 +446,9 @@ export default function ChatLayout({ user }: ChatLayoutProps) {
     
     // 银行卡签约完成
     if (cardType === "bank_sign" && action === "confirm") {
-              try {
+      try {
         // 银行卡签约完成: 1018 → 1019 (API 会自动跳转到 1029)
-        await fetch("/api/user/attribute", {
+        const response = await fetch("/api/user/attribute", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -442,13 +457,28 @@ export default function ChatLayout({ user }: ChatLayoutProps) {
             value: "1019",
           }),
         })
+        const result = await response.json()
+        const newPhase = result.newValue || "1029"
+        console.log("[银行卡签约] 本地 phase 更新:", newPhase)
+
+        // 同步 phase 到 GPTBots
+        await fetch("/api/user/gptbots-attribute", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId: user.userId,
+            attributeName: "phase",
+            value: newPhase,
+          }),
+        })
+        console.log("[银行卡签约] GPTBots phase 已同步:", newPhase)
 
         // 刷新流程图的用户属性状态
         fetchUserAttributes()
         
         // 自动发送用户消息
         handleSendMessage("我已完成银行卡签约，请继续")
-    } catch (error) {
+      } catch (error) {
         console.error("[Business Card] bank_sign error:", error)
       }
     }

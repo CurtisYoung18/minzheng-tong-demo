@@ -5,8 +5,10 @@ import http from "http"
 import https from "https"
 import { Readable } from "stream"
 
-const GPTBOTS_API_KEY = process.env.GPTBOTS_API_KEY || "app-O9qte2NIaa2JgFFS7ePpK69c"
-const GPTBOTS_BASE_URL = process.env.GPTBOTS_BASE_URL || "https://27.156.118.33:40443"
+// const GPTBOTS_API_KEY = process.env.GPTBOTS_API_KEY || "app-O9qte2NIaa2JgFFS7ePpK69c"
+const GPTBOTS_API_KEY = process.env.GPTBOTS_API_KEY || "app-WaxCZdYdSZuuQcAsCOaz8v14"
+// const GPTBOTS_BASE_URL = process.env.GPTBOTS_BASE_URL || "https://27.156.118.33:40443"
+const GPTBOTS_BASE_URL = process.env.GPTBOTS_BASE_URL || "https://api-sg.gptbots.ai"
 
 // Create HTTPS agent that ignores SSL certificate errors
 const httpsAgent = new https.Agent({
