@@ -160,6 +160,8 @@ export default function MessageCard({
   const parsedResponse = useMemo(() => {
     // 优先使用消息中已解析的字段
     if (message.llmCardType !== undefined) {
+      console.log("[MessageCard] 使用消息中的llmCardType:", message.llmCardType)
+      console.log("[MessageCard] message.content:", message.content?.substring(0, 100))
       return {
         card_type: message.llmCardType,
         card_message: message.llmCardMessage || '',
@@ -167,7 +169,13 @@ export default function MessageCard({
       } as LLMResponse
     }
     // 尝试从 content 中解析 JSON
-    return parseLLMResponse(message.content)
+    const parsed = parseLLMResponse(message.content)
+    if (parsed) {
+      console.log("[MessageCard] 从content解析出card_type:", parsed.card_type)
+    } else {
+      console.log("[MessageCard] 无法解析card_type, content:", message.content?.substring(0, 100))
+    }
+    return parsed
   }, [message.content, message.llmCardType, message.llmCardMessage])
   
   // 检查是否为业务卡片类型
@@ -419,6 +427,17 @@ export default function MessageCard({
       )}
       
       {/* Business Card - 查询授权卡片 (card_type: "processing_auth") - 授权后只显示授权成功 */}
+      {(() => {
+        if (llmCardType === "processing_auth") {
+          console.log("[MessageCard] ===== processing_auth 卡片渲染检查 =====")
+          console.log("[MessageCard] llmCardType:", llmCardType)
+          console.log("[MessageCard] userInfo:", userInfo)
+          console.log("[MessageCard] onBusinessCardAction:", !!onBusinessCardAction)
+          console.log("[MessageCard] message.authCompleted:", message.authCompleted)
+          console.log("[MessageCard] 条件满足:", llmCardType === "processing_auth" && !!userInfo && !!onBusinessCardAction)
+        }
+        return null
+      })()}
       {llmCardType === "processing_auth" && userInfo && onBusinessCardAction && (
         <AuthCard
           userInfo={userInfo}

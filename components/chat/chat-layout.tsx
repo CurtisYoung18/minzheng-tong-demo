@@ -691,11 +691,19 @@ export default function ChatLayout({ user }: ChatLayoutProps) {
         buffer += chunk
         jsonBuffer += chunk // Also accumulate for JSON detection
         
-        // Detect JSON mode on first meaningful content
+        // Detect JSON mode on first meaningful content (after stripping think tags)
         if (isJsonMode === null && jsonBuffer.trim().length > 0) {
-          isJsonMode = jsonBuffer.trim().startsWith('{')
-          if (isJsonMode) {
+          // 移除 <think>...</think> 标签后再判断是否为 JSON 模式
+          const contentWithoutThink = jsonBuffer.replace(/<think>[\s\S]*?<\/think>/gi, '').trim()
+          // 只有当有非 think 内容时才判断模式
+          if (contentWithoutThink.length > 0) {
+            isJsonMode = contentWithoutThink.startsWith('{')
+            console.log("[JSON模式检测] isJsonMode:", isJsonMode, "内容开头:", contentWithoutThink.substring(0, 20))
+          } else if (!jsonBuffer.includes('<think>')) {
+            // 如果没有 think 标签，直接判断
+            isJsonMode = jsonBuffer.trim().startsWith('{')
           }
+          // 如果还在 think 标签中，延迟判断
         }
         
         // Loop to process all complete tags in the buffer
@@ -756,7 +764,9 @@ export default function ChatLayout({ user }: ChatLayoutProps) {
         
         // In JSON mode, try to extract content for streaming display
         if (isJsonMode) {
-          const extracted = tryExtractJsonContent(jsonBuffer)
+          // 先移除 think 标签再提取 content
+          const cleanedBuffer = jsonBuffer.replace(/<think>[\s\S]*?<\/think>/gi, '')
+          const extracted = tryExtractJsonContent(cleanedBuffer)
           if (extracted !== null) {
             extractedContent = extracted
           }
@@ -765,22 +775,57 @@ export default function ChatLayout({ user }: ChatLayoutProps) {
       
       // Parse LLM JSON response format (final parsing)
       const parseLLMJsonResponse = (content: string) => {
-        if (!content) return null
-        const trimmed = content.trim()
+        if (!content) {
+          console.log("[JSON解析] 内容为空")
+          return null
+        }
+        
+        // 先移除 <think>...</think> 标签
+        let cleaned = content.replace(/<think>[\s\S]*?<\/think>/gi, '').trim()
+        console.log("[JSON解析] 清理后内容长度:", cleaned.length)
+        console.log("[JSON解析] 清理后内容预览:", cleaned.substring(0, 200))
+        
         // Check if it looks like JSON
-        if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+        if (cleaned.startsWith('{') && cleaned.endsWith('}')) {
           try {
-            const parsed = JSON.parse(trimmed)
+            const parsed = JSON.parse(cleaned)
+            console.log("[JSON解析] 解析成功:", Object.keys(parsed))
             if ('content' in parsed) {
-              return {
+              const result = {
                 card_type: parsed.card_type,
                 card_message: parsed.card_message,
                 content: parsed.content || ''
               }
+              console.log("[JSON解析] ✅ card_type:", result.card_type)
+              console.log("[JSON解析] ✅ card_message:", result.card_message?.substring(0, 50))
+              return result
+            } else {
+              console.log("[JSON解析] ⚠️ JSON中没有content字段")
             }
-          } catch {
-            // Not valid JSON
+          } catch (e) {
+            console.log("[JSON解析] ❌ JSON解析失败:", e)
           }
+        } else {
+          // 尝试从混合内容中提取 JSON
+          console.log("[JSON解析] 尝试从混合内容中提取JSON...")
+          const jsonMatch = cleaned.match(/\{[\s\S]*\}/)
+          if (jsonMatch) {
+            try {
+              const parsed = JSON.parse(jsonMatch[0])
+              if ('content' in parsed) {
+                const result = {
+                  card_type: parsed.card_type,
+                  card_message: parsed.card_message,
+                  content: parsed.content || ''
+                }
+                console.log("[JSON解析] ✅ 从混合内容提取成功, card_type:", result.card_type)
+                return result
+              }
+            } catch (e) {
+              console.log("[JSON解析] ❌ 从混合内容提取JSON失败:", e)
+            }
+          }
+          console.log("[JSON解析] ⚠️ 不是JSON格式, 开头:", cleaned.substring(0, 10), "结尾:", cleaned.substring(Math.max(0, cleaned.length - 10)))
         }
         return null
       }
@@ -832,10 +877,14 @@ export default function ChatLayout({ user }: ChatLayoutProps) {
         // 当检测到 sms_sign 或 bank_sign card 时，显示流程图
         if (isFinal && llmResponse?.card_type) {
           const cardType = llmResponse.card_type
+          console.log("[updateUI] ✅ Final update with card_type:", cardType)
           if (cardType === "sms_sign" || cardType === "bank_sign") {
             console.log("[流程图] 检测到签约卡片，显示流程图:", cardType)
             setShowFlowChart(true)
           }
+        } else if (isFinal) {
+          console.log("[updateUI] ⚠️ Final update but no card_type, llmResponse:", llmResponse)
+          console.log("[updateUI] jsonBuffer preview:", jsonBuffer.substring(0, 300))
         }
       }
 
@@ -860,8 +909,13 @@ export default function ChatLayout({ user }: ChatLayoutProps) {
                     updateUI() // Throttled update
                   }
                 } else if (event.code === 10 && event.message === "FlowOutput") {
-                  // FlowOutput often contains the full/partial content that might duplicate what received in Text events.
-                  // We intentionally ignore it to prevent duplication, relying on Text events for streaming.
+                  // FlowOutput contains structured card responses (JSON with card_type)
+                  console.log("[FlowOutput] 收到FlowOutput事件:", event.data)
+                  if (event.data?.text) {
+                    // FlowOutput 中的 text 可能包含 JSON 格式的卡片数据
+                    processTextChunk(event.data.text)
+                    updateUI() // Throttled update
+                  }
                 } else if (event.code === 39 && event.message === "Audio") {
                   // Audio transcript
                   if (event.data?.transcript) {
@@ -880,6 +934,9 @@ export default function ChatLayout({ user }: ChatLayoutProps) {
                   }
                 } else if (event.code === 0 && event.message === "End") {
                   // Stream ended - process any remaining buffer
+                  console.log("[Stream End] jsonBuffer 长度:", jsonBuffer.length)
+                  console.log("[Stream End] jsonBuffer 内容:", jsonBuffer.substring(0, 500))
+                  console.log("[Stream End] isJsonMode:", isJsonMode)
                   processTextChunk("", true) // Flush buffer
                   
                   // Clean up any remaining tags or partial tags
